@@ -1,0 +1,23 @@
+name: Release
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+  release:
+    name: Release
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: haskell-actions/hackage-publish@v1
+        with:
+          hackageToken: ${{ secrets.HACKAGE_AUTH_TOKEN }}
+          docsPath: ./artifact/docs
+          packagesPath: ./artifact/sdist
+          publish: true
