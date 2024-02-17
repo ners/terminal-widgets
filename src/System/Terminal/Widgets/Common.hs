@@ -6,11 +6,12 @@ module System.Terminal.Widgets.Common where
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as Text
 import Internal.Prelude
-import System.Terminal.Render hiding (render)
 import System.Terminal.Render qualified as Render
 
-class (HasCursor w) => Widget w where
+class Widget w where
+    cursor :: Lens' w Position
     handleEvent :: Event -> w -> w
+    {-# MINIMAL handleEvent, cursor #-}
     submitEvent :: w -> Maybe Event
     submitEvent _ = Just $ KeyEvent EnterKey []
     valid :: w -> Bool
@@ -23,8 +24,8 @@ class (HasCursor w) => Widget w where
     render :: (MonadTerminal m) => (Maybe w, w) -> m ()
     render (maybeOld, new) = Render.render (r <$> maybeOld) (r new)
       where
-        r :: w -> (Cursor, Text)
-        r w = (w.cursor, toText w)
+        r :: w -> (Position, Text)
+        r w = (w ^. cursor, toText w)
 
 data Modifier = Shift | Ctrl | Alt | Meta
     deriving stock (Bounded, Enum)
@@ -47,7 +48,7 @@ runWidget = go Nothing
   where
     cleanup :: w -> m ()
     cleanup w = do
-        let dy = fromIntegral (lineCount w) - w.cursor.row - 1
+        let dy = fromIntegral (lineCount w) - (w ^. cursor . #row) - 1
         when (dy > 0) $ moveCursorDown dy
         putLn
         resetAttributes
