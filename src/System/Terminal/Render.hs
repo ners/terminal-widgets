@@ -32,8 +32,8 @@ render maybeOld new = flip evalStateT (maybe (Cursor 0 0) fst maybeOld) do
     let oldLines = maybe [""] (Text.lines . snd) maybeOld
     let newLines = (Text.lines . snd) new
     let deltas =
-            filter (\(_, oldText, newText) -> oldText /= newText) $
-                zip3 [0 :: Int ..] oldLines newLines
+            filter (\(_, oldText, newText) -> oldText /= newText)
+                $ zip3 [0 :: Int ..] oldLines newLines
 
     forM_ deltas $ \(row, oldText, newText) -> do
         moveToRow row

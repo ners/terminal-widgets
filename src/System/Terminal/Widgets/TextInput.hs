@@ -18,8 +18,9 @@ data TextInput = TextInput
     , multiline :: !Bool
     , required :: !Bool
     , value :: !RopeZipper
+    , valueTransform :: !(Text -> Text)
     }
-    deriving stock (Generic, Eq)
+    deriving stock (Generic)
 
 instance GHC.HasField "cursor" TextInput Cursor where
     getField ((.value.cursor) -> c) = Cursor{row = fromIntegral c.posLine, col = fromIntegral c.posColumn}
@@ -44,16 +45,19 @@ instance Widget TextInput where
     submitEvent t
         | valid t = Just $ KeyEvent EnterKey $ fromList [Alt | t.multiline]
         | otherwise = Nothing
-    toText TextInput{..} = prompt <> RopeZipper.toText value
+    toText TextInput{..} = prompt <> valueTransform (RopeZipper.toText value)
     lineCount TextInput{..} = max 1 $ RopeZipper.lengthInLines value
     render (maybeOld, new) = flip evalStateT (maybe (Cursor 0 0) (.cursor) maybeOld) do
         let getLines :: TextInput -> [Text]
             getLines =
-                (_head %~ (new.prompt <>))
-                    . (_tail %~ fmap (Text.replicate (Text.length new.prompt) " " <>))
-                    . RopeZipper.lines
-                    . (<> "\n")
+                padLines
+                    . Text.lines
+                    . new.valueTransform
+                    . RopeZipper.toText
                     . (.value)
+            padLines :: [Text] -> [Text]
+            padLines (x : xs) = (new.prompt <> x) : ((Text.replicate (Text.length new.prompt) " " <>) <$> xs)
+            padLines [] = [new.prompt]
             oldLines = maybe [""] getLines maybeOld
             newLines = getLines new
 

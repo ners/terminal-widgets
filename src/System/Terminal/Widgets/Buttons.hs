@@ -2,14 +2,14 @@
 
 module System.Terminal.Widgets.Buttons where
 
+import Data.Char (toLower)
 import Data.Generics.Product qualified as Lens
 import Data.Text qualified as Text
-import Prettyprinter (Pretty (pretty), annotate)
-import System.Terminal.Widgets.Common
-import System.Terminal.Render
 import GHC.Records qualified as GHC
 import Internal.Prelude
-import Data.Char (toLower)
+import Prettyprinter (Pretty (pretty), annotate)
+import System.Terminal.Render
+import System.Terminal.Widgets.Common
 
 data Buttons = Buttons
     { prompt :: !Text
@@ -43,9 +43,9 @@ instance Widget Buttons where
             let (prefix, maybeSuffix) = second Text.uncons $ Text.break (accessKey `matches`) label
             let labelDoc =
                     case maybeSuffix of
-                        Just (c, suffix) -> mconcat [pretty prefix, annotate underlined $ pretty c, pretty suffix ]
+                        Just (c, suffix) -> mconcat [pretty prefix, annotate underlined $ pretty c, pretty suffix]
                         Nothing -> pretty prefix
-            let doc = mconcat [ "[ ", labelDoc, " ]" ]
+            let doc = mconcat ["[ ", labelDoc, " ]"]
             if i == new.selected
                 then putDoc $ annotate inverted doc
                 else putDoc doc
@@ -63,4 +63,5 @@ matches (Just k) c = toLower k == toLower c
 
 handleAccessKey :: Char -> Buttons -> Buttons
 handleAccessKey k b = b & #selected .~ selected
-    where selected = fromMaybe b.selected $ findIndex ((`matches` k) . snd) b.buttons
+  where
+    selected = fromMaybe b.selected $ findIndex ((`matches` k) . snd) b.buttons

@@ -51,11 +51,11 @@ import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import GHC.Generics (Generic)
 import GHC.IsList
-import Prelude hiding (putChar)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO (BufferMode (NoBuffering), IO, hSetBuffering, stdout)
 import System.Terminal
 import System.Terminal.Internal (LocalTerminal, Terminal)
+import Prelude hiding (putChar)
 
 ishow :: (Show a, IsString s) => a -> s
 ishow = fromString . show
