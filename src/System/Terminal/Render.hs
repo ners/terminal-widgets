@@ -1,34 +1,23 @@
-{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module System.Terminal.Render where
 
-import Data.Generics.Product qualified as Lens
 import Data.Text qualified as Text
-import GHC.Records qualified as GHC
 import Internal.Prelude
 import Internal.Prelude qualified as Prelude
 
-data Cursor = Cursor
-    { row :: !Int
-    , col :: !Int
-    }
-    deriving stock (Generic, Eq, Show)
-
-type HasCursor w =
-    ( GHC.HasField "cursor" w Cursor
-    , Lens.HasField "cursor" w w Cursor Cursor
-    )
+deriving stock instance Generic Position
 
 type MonadCursor t m m' =
     ( MonadTrans t
     , MonadScreen m'
     , m ~ t m'
-    , MonadState Cursor m
+    , MonadState Position m
     )
 
-render :: (MonadScreen m) => Maybe (Cursor, Text) -> (Cursor, Text) -> m ()
-render maybeOld new = flip evalStateT (maybe (Cursor 0 0) fst maybeOld) do
+render :: (MonadScreen m) => Maybe (Position, Text) -> (Position, Text) -> m ()
+render maybeOld new = flip evalStateT (maybe Position{row = 0, col = 0} fst maybeOld) do
     let oldLines = maybe [""] (Text.lines . snd) maybeOld
     let newLines = (Text.lines . snd) new
     let deltas =
@@ -38,7 +27,7 @@ render maybeOld new = flip evalStateT (maybe (Cursor 0 0) fst maybeOld) do
     forM_ deltas $ \(row, oldText, newText) -> do
         moveToRow row
         lift $ renderLine oldText newText
-        #col .= Text.length newText
+        modify $ #col .~ Text.length newText
 
     -- Clear the remaining old lines
     when (length oldLines > length newLines) do
@@ -56,26 +45,27 @@ render maybeOld new = flip evalStateT (maybe (Cursor 0 0) fst maybeOld) do
   where
     moveToRow :: (MonadCursor t m m') => Int -> m ()
     moveToRow newRow = do
-        oldRow <- use #row
-        let dy = newRow - oldRow
-        when (dy > 0) $ lift $ moveCursorDown dy
-        when (dy < 0) $ lift $ moveCursorUp $ negate dy
-        #row .= newRow
+        oldRow <- gets (.row)
+        lift $ case compare newRow oldRow of
+            GT -> moveCursorDown $ newRow - oldRow
+            LT -> moveCursorUp $ oldRow - newRow
+            EQ -> pure ()
+        modify $ #row .~ newRow
 
     moveToColumn :: (MonadCursor t m m') => Int -> m ()
     moveToColumn newCol = do
-        oldCol <- use #col
+        oldCol <- gets (.col)
         when (oldCol /= newCol) do
-            lift (setCursorColumn newCol) >> #col .= newCol
+            lift (setCursorColumn newCol)
+            modify $ #col .~ newCol
 
-    moveToPosition :: (MonadCursor t m m') => Cursor -> m ()
-    moveToPosition Cursor{..} = moveToRow row >> moveToColumn col
+    moveToPosition :: (MonadCursor t m m') => Position -> m ()
+    moveToPosition Position{..} = moveToRow row >> moveToColumn col
 
     putLn :: (MonadCursor t m m') => m ()
-    putLn = lift Prelude.putLn >> moveToColumn 0 >> #row %= succ
-
+    putLn = lift Prelude.putLn >> moveToColumn 0 >> modify (#row %~ succ)
     putText :: (MonadCursor t m m') => Text -> m ()
-    putText t = lift (Prelude.putText t) >> #col %= (+ Text.length t)
+    putText t = lift (Prelude.putText t) >> modify (#col %~ (+ Text.length t))
 
 renderLine :: (MonadScreen m) => Text -> Text -> m ()
 renderLine oldText newText =

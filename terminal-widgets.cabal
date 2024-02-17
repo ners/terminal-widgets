@@ -61,7 +61,6 @@ library
         base >= 4.16 && < 5,
         exceptions,
         generic-lens,
-        lens,
         mtl,
         prettyprinter,
         terminal,

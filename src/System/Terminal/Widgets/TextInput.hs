@@ -3,11 +3,9 @@
 
 module System.Terminal.Widgets.TextInput where
 
-import Data.Generics.Product qualified as Lens
 import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
-import GHC.Records qualified as GHC
 import Internal.Prelude
 import Internal.Prelude qualified as Prelude
 import System.Terminal.Render
@@ -22,16 +20,8 @@ data TextInput = TextInput
     }
     deriving stock (Generic)
 
-instance GHC.HasField "cursor" TextInput Cursor where
-    getField ((.value.cursor) -> c) = Cursor{row = fromIntegral c.posLine, col = fromIntegral c.posColumn}
-
-instance {-# OVERLAPPING #-} Lens.HasField "cursor" TextInput TextInput Cursor Cursor where
-    field = lens (.cursor) (\t c -> t & #value . #cursor .~ cursorToPosition c)
-      where
-        cursorToPosition Cursor{..} =
-            RopeZipper.Position{posLine = fromIntegral row, posColumn = fromIntegral col}
-
 instance Widget TextInput where
+    cursor = #value . #cursor
     handleEvent (KeyEvent BackspaceKey []) = #value %~ RopeZipper.deleteBefore
     handleEvent (KeyEvent DeleteKey []) = #value %~ RopeZipper.deleteAfter
     handleEvent (KeyEvent (CharKey k) []) = #value %~ RopeZipper.insertText (Text.singleton k)
@@ -47,7 +37,7 @@ instance Widget TextInput where
         | otherwise = Nothing
     toText TextInput{..} = prompt <> valueTransform (RopeZipper.toText value)
     lineCount TextInput{..} = max 1 $ RopeZipper.lengthInLines value
-    render (maybeOld, new) = flip evalStateT (maybe (Cursor 0 0) (.cursor) maybeOld) do
+    render (maybeOld, new) = flip evalStateT (maybe Position{row = 0, col = 0} (view cursor) maybeOld) do
         let getLines :: TextInput -> [Text]
             getLines =
                 padLines
@@ -68,7 +58,7 @@ instance Widget TextInput where
         forM_ deltas $ \(row, oldText, newText) -> do
             moveToRow row
             lift $ renderLine oldText newText
-            #col .= Text.length newText
+            modify $ #col .~ Text.length newText
 
         -- Clear the remaining old lines
         when (length oldLines > length newLines) do
@@ -82,27 +72,28 @@ instance Widget TextInput where
             putLn
             sequence_ $ intersperse putLn $ putText <$> drop (length oldLines) newLines
 
-        moveToPosition new.cursor
+        moveToPosition $ new ^. cursor
       where
         moveToRow :: (MonadCursor t m m') => Int -> m ()
         moveToRow newRow = do
-            oldRow <- use #row
+            oldRow <- gets (.row)
             let dy = newRow - oldRow
             when (dy > 0) $ lift $ moveCursorDown dy
             when (dy < 0) $ lift $ moveCursorUp $ negate dy
-            #row .= newRow
+            modify $ #row .~ newRow
 
         moveToColumn :: (MonadCursor t m m') => Int -> m ()
         moveToColumn ((+ Text.length new.prompt) -> newCol) = do
-            oldCol <- use #col
+            oldCol <- gets (.col)
             when (oldCol /= newCol) do
-                lift (setCursorColumn newCol) >> #col .= newCol
+                lift (setCursorColumn newCol)
+                modify $ #col .~ newCol
 
-        moveToPosition :: (MonadCursor t m m') => Cursor -> m ()
-        moveToPosition Cursor{..} = moveToRow row >> moveToColumn col
+        moveToPosition :: (MonadCursor t m m') => Position -> m ()
+        moveToPosition Position{..} = moveToRow row >> moveToColumn col
 
         putLn :: (MonadCursor t m m') => m ()
-        putLn = lift Prelude.putLn >> moveToColumn 0 >> #row %= succ
+        putLn = lift Prelude.putLn >> moveToColumn 0 >> modify (#row %~ succ)
 
         putText :: (MonadCursor t m m') => Text -> m ()
-        putText t = lift (Prelude.putText t) >> #col %= (+ Text.length t)
+        putText t = lift (Prelude.putText t) >> modify (#col %~ (+ Text.length t))

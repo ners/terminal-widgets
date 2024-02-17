@@ -3,12 +3,9 @@
 module System.Terminal.Widgets.Buttons where
 
 import Data.Char (toLower)
-import Data.Generics.Product qualified as Lens
 import Data.Text qualified as Text
-import GHC.Records qualified as GHC
 import Internal.Prelude
 import Prettyprinter (Pretty (pretty), annotate)
-import System.Terminal.Render
 import System.Terminal.Widgets.Common
 
 data Buttons = Buttons
@@ -18,13 +15,13 @@ data Buttons = Buttons
     }
     deriving stock (Generic, Eq)
 
-instance GHC.HasField "cursor" Buttons Cursor where
-    getField b = Cursor{col = b.selected, row = 1}
-
-instance {-# OVERLAPPING #-} Lens.HasField "cursor" Buttons Buttons Cursor Cursor where
-    field = lens (.cursor) (\t Cursor{..} -> t & #selected .~ col)
-
 instance Widget Buttons where
+    cursor = lens getter setter
+      where
+        getter :: Buttons -> Position
+        getter t = Position{row = 1, col = t.selected}
+        setter :: Buttons -> Position -> Buttons
+        setter b Position{..} = b & #selected .~ col
     handleEvent (KeyEvent (ArrowKey Leftwards) []) = moveLeft
     handleEvent (KeyEvent (ArrowKey Rightwards) []) = moveRight
     handleEvent (KeyEvent (CharKey k) []) = handleAccessKey k
