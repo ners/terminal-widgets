@@ -97,3 +97,8 @@ instance Widget TextInput where
 
         putText :: (MonadCursor t m m') => Text -> m ()
         putText t = lift (Prelude.putText t) >> modify (#col %~ (+ Text.length t))
+
+-- | Get the current 'Text' in the 'TextInput' widget. If the widget is
+-- multiline, then it will be converted to include newline characters.
+valueText :: TextInput -> Text
+valueText = RopeZipper.toText . (.value)
