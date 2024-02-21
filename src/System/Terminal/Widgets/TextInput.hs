@@ -21,7 +21,12 @@ data TextInput = TextInput
     deriving stock (Generic)
 
 instance Widget TextInput where
-    cursor = #value . #cursor
+    cursor = lens getter setter
+      where
+        getter :: TextInput -> Position
+        getter TextInput{..} = value ^. #cursor & #col %~ (+ Text.length prompt)
+        setter :: TextInput -> Position -> TextInput
+        setter t (#col %~ subtract (Text.length t.prompt) -> p) = t & #value . #cursor .~ p
     handleEvent (KeyEvent BackspaceKey []) = #value %~ RopeZipper.deleteBefore
     handleEvent (KeyEvent DeleteKey []) = #value %~ RopeZipper.deleteAfter
     handleEvent (KeyEvent (CharKey k) []) = #value %~ RopeZipper.insertText (Text.singleton k)
@@ -31,10 +36,10 @@ instance Widget TextInput where
     handleEvent (KeyEvent (ArrowKey Upwards) []) = filtered (.multiline) . #value %~ RopeZipper.moveUp
     handleEvent (KeyEvent (ArrowKey Downwards) []) = filtered (.multiline) . #value %~ RopeZipper.moveDown
     handleEvent _ = id
-    valid TextInput{..} = not $ required && RopeZipper.null value
     submitEvent t
         | valid t = Just $ KeyEvent EnterKey $ fromList [Alt | t.multiline]
         | otherwise = Nothing
+    valid TextInput{..} = not $ required && RopeZipper.null value
     toText TextInput{..} = prompt <> valueTransform (RopeZipper.toText value)
     lineCount TextInput{..} = max 1 $ RopeZipper.lengthInLines value
     render (maybeOld, new) = flip evalStateT (maybe Position{row = 0, col = 0} (view cursor) maybeOld) do
@@ -52,8 +57,8 @@ instance Widget TextInput where
             newLines = getLines new
 
         let deltas =
-                filter (\(_, oldText, newText) -> oldText /= newText) $
-                    zip3 [0 :: Int ..] oldLines newLines
+                filter (\(_, oldText, newText) -> oldText /= newText)
+                    $ zip3 [0 :: Int ..] oldLines newLines
 
         forM_ deltas $ \(row, oldText, newText) -> do
             moveToRow row
@@ -83,7 +88,7 @@ instance Widget TextInput where
             modify $ #row .~ newRow
 
         moveToColumn :: (MonadCursor t m m') => Int -> m ()
-        moveToColumn ((+ Text.length new.prompt) -> newCol) = do
+        moveToColumn newCol = do
             oldCol <- gets (.col)
             when (oldCol /= newCol) do
                 lift (setCursorColumn newCol)

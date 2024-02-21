@@ -13,7 +13,9 @@ class Widget w where
     handleEvent :: Event -> w -> w
     {-# MINIMAL handleEvent, cursor #-}
     submitEvent :: w -> Maybe Event
-    submitEvent _ = Just $ KeyEvent EnterKey []
+    submitEvent w
+        | valid w = Just $ KeyEvent EnterKey []
+        | otherwise = Nothing
     valid :: w -> Bool
     valid = const True
     toText :: w -> Text

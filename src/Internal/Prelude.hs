@@ -9,10 +9,12 @@ module Internal.Prelude
     , module Control.Monad.Trans
     , module Control.Monad.Trans.Class
     , module Data.Bits
+    , module Data.Ix
     , module Data.Foldable
     , module Data.Function
     , module Data.Functor
     , module Data.List
+    , module Data.List.Extra
     , module Data.Maybe
     , module Data.String
     , module Data.Text
@@ -48,7 +50,9 @@ import Data.Functor.Identity (Identity)
 import Data.Generics.Internal.VL
 import Data.Generics.Labels ()
 import Data.Generics.Product qualified as Lens
-import Data.List (findIndex, intersperse)
+import Data.Ix
+import Data.List (findIndex, intersperse, uncons)
+import Data.List.Extra
 import Data.Maybe hiding (mapMaybe)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
@@ -79,6 +83,9 @@ instance {-# OVERLAPPING #-} Lens.HasField' "cursor" RopeZipper Position where
             RopeZipper.setCursor
                 RopeZipper.Position{posLine = fromIntegral row, posColumn = fromIntegral col}
                 rz
+
+instance {-# OVERLAPPING #-} Lens.HasField "cursor" RopeZipper RopeZipper Position Position where
+    field = Lens.field' @"cursor" @RopeZipper @Position
 
 deriving stock instance Generic RopeZipper.Position
 
