@@ -4,8 +4,7 @@
 module System.Terminal.Render where
 
 import Data.Text qualified as Text
-import Internal.Prelude
-import Internal.Prelude qualified as Prelude
+import Prelude
 
 deriving stock instance Generic Position
 

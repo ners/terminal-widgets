@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Internal.Prelude
+module Prelude
     ( module Control.Arrow
     , module Control.Monad
     , module Control.Monad.Catch
@@ -26,12 +26,6 @@ module Internal.Prelude
     , module System.IO
     , module System.Terminal
     , module System.Terminal.Internal
-    , ishow
-    , fromText
-    , commonPrefixes
-    , (%~)
-    , filtered
-    , ix
     )
 where
 
@@ -65,7 +59,7 @@ import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO (BufferMode (NoBuffering), IO, hSetBuffering, stdout)
 import System.Terminal
 import System.Terminal.Internal (LocalTerminal, Terminal)
-import Prelude hiding (putChar)
+import "base" Prelude hiding (putChar)
 
 ishow :: (Show a, IsString s) => a -> s
 ishow = fromString . show

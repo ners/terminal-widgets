@@ -6,10 +6,9 @@ module System.Terminal.Widgets.TextInput where
 import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
-import Internal.Prelude
-import Internal.Prelude qualified as Prelude
 import System.Terminal.Render
 import System.Terminal.Widgets.Common
+import Prelude
 
 data TextInput = TextInput
     { prompt :: Text
@@ -57,8 +56,8 @@ instance Widget TextInput where
             newLines = getLines new
 
         let deltas =
-                filter (\(_, oldText, newText) -> oldText /= newText)
-                    $ zip3 [0 :: Int ..] oldLines newLines
+                filter (\(_, oldText, newText) -> oldText /= newText) $
+                    zip3 [0 :: Int ..] oldLines newLines
 
         forM_ deltas $ \(row, oldText, newText) -> do
             moveToRow row

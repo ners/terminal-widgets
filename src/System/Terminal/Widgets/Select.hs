@@ -3,7 +3,7 @@
 module System.Terminal.Widgets.Select where
 
 import Data.Text qualified as Text
-import Internal.Prelude
+import Prelude
 import System.Terminal.Widgets.Common
 
 data SelectOption a = SelectOption

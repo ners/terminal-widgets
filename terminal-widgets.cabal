@@ -43,11 +43,20 @@ common common
         OverloadedLabels
         OverloadedRecordDot
         OverloadedStrings
+        PackageImports
         RecordWildCards
         RecursiveDo
         StrictData
         TypeFamilies
         ViewPatterns
+    build-depends:
+        base >= 4.16 && < 5,
+        extra,
+        generic-lens,
+        terminal,
+        text,
+        text-rope-zipper,
+        transformers,
 
 library
     import:           common
@@ -60,16 +69,27 @@ library
         System.Terminal.Widgets.Select,
         System.Terminal.Widgets.TextInput,
     build-depends:
-        base >= 4.16 && < 5,
         exceptions,
-        extra,
         fuzzy,
-        generic-lens,
         mtl,
         prettyprinter,
-        terminal,
-        text,
-        text-rope-zipper,
-        transformers,
     other-modules:
-        Internal.Prelude,
+        Prelude,
+
+test-suite spec
+    import:           common
+    ghc-options:      -threaded
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Spec.hs
+    build-depends:
+        QuickCheck,
+        hspec,
+        terminal-widgets,
+        unliftio,
+    other-modules:
+        Prelude,
+        System.Terminal.Widgets.ButtonsSpec,
+        System.Terminal.Widgets.SearchSelectSpec,
+        System.Terminal.Widgets.SelectSpec,
+        System.Terminal.Widgets.TextInputSpec,

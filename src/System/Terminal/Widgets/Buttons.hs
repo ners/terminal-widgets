@@ -4,7 +4,7 @@ module System.Terminal.Widgets.Buttons where
 
 import Data.Char (toLower)
 import Data.Text qualified as Text
-import Internal.Prelude
+import Prelude
 import Prettyprinter (Pretty (pretty), annotate)
 import System.Terminal.Widgets.Common
 

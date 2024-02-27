@@ -6,10 +6,10 @@ import Data.Ord (Down (Down))
 import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
-import Internal.Prelude
 import System.Terminal.Widgets.Common
 import System.Terminal.Widgets.TextInput
 import Text.Fuzzy qualified as Fuzzy
+import Prelude
 
 data SearchSelect a = SearchSelect
     { prompt :: Text
