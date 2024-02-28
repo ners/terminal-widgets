@@ -1,10 +1,15 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module System.Terminal.Widgets.Common where
 
+import Control.Applicative
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Coerce
+import Data.Monoid hiding (Alt)
 import Data.Text qualified as Text
+import Prettyprinter
 import System.Terminal.Render qualified as Render
 import Prelude
 
@@ -18,16 +23,24 @@ class Widget w where
         | otherwise = Nothing
     valid :: w -> Bool
     valid = const True
-    toText :: w -> Text
-    default toText :: (Show w) => w -> Text
-    toText = Text.pack . show
-    lineCount :: w -> Word
-    lineCount = fromIntegral . Text.count "\n" . toText
-    render :: (MonadTerminal m) => (Maybe w, w) -> m ()
-    render (maybeOld, new) = Render.render (r <$> maybeOld) (r new)
-      where
-        r :: w -> (Position, Text)
-        r w = (w ^. cursor, toText w)
+    toDoc :: (MonadTerminal m) => w -> Doc (Attribute m)
+    default toDoc :: (Show w) => w -> Doc (Attribute m)
+    toDoc = ishow
+    lineCount :: w -> Int
+    lineCount =
+        (1 +)
+            . length
+            . filter (`is` #_TLine)
+            . Render.tokenise @(TerminalT LocalTerminal IO)
+            . toDoc
+    render :: forall m. (MonadTerminal m) => (Maybe w, w) -> m ()
+    render = defaultRender
+
+defaultRender :: forall w m. (Widget w, MonadTerminal m) => (Maybe w, w) -> m ()
+defaultRender (maybeOld, new) = Render.render (r <$> maybeOld) (r new)
+  where
+    r :: w -> (Position, Doc (Attribute m))
+    r w = (w ^. cursor, toDoc w)
 
 data Modifier = Shift | Ctrl | Alt | Meta
     deriving stock (Bounded, Enum)
@@ -56,7 +69,7 @@ runWidget' preRender postRender = go Nothing
   where
     cleanup :: w -> m ()
     cleanup w = do
-        let dy = fromIntegral (lineCount w) - (w ^. cursor . #row) - 1
+        let dy = lineCount w - (w ^. cursor . #row) - 1
         when (dy > 0) $ moveCursorDown dy
         putLn
         resetAttributes

@@ -11,7 +11,7 @@ deriving stock instance Show Buttons
 
 instance Arbitrary Buttons where
     arbitrary = do
-        buttons <- arbitrary
+        buttons <- (:) <$> arbitrary <*> arbitrary
         selected <- chooseInt (0, length buttons - 1)
         pure Buttons{prompt = "prompt", ..}
 

@@ -7,6 +7,10 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     nix-filter.url = "github:numtide/nix-filter";
+    haskell-terminal = {
+      url = "github:ners/haskell-terminal/fix-virtual-terminal-erase";
+      flake = false;
+    };
     text-rope-zipper = {
       url = "github:ners/text-rope-zipper";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -42,6 +46,7 @@
             packageOverrides = lib.composeExtensions
               prev.haskell.packageOverrides
               (hfinal: hprev: {
+                terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
                 "${pname}" = hfinal.callCabal2nix pname src { };
               });
           };

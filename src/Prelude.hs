@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Prelude
-    ( module Control.Arrow
+    ( module Control.Applicative
+    , module Control.Arrow
     , module Control.Monad
     , module Control.Monad.Catch
     , module Control.Monad.Reader
@@ -9,18 +10,21 @@ module Prelude
     , module Control.Monad.Trans
     , module Control.Monad.Trans.Class
     , module Data.Bits
-    , module Data.Ix
     , module Data.Foldable
     , module Data.Function
     , module Data.Functor
+    , module Data.Generics.Internal.VL
+    , module Data.Ix
     , module Data.List
     , module Data.List.Extra
     , module Data.Maybe
+    , module Data.Monoid
     , module Data.String
     , module Data.Text
+    , module Data.Text.Prettyprint.Doc
+    , module Debug.Trace
     , module GHC.Generics
     , module GHC.IsList
-    , module Data.Generics.Internal.VL
     , module Prelude
     , module System.Exit
     , module System.IO
@@ -29,6 +33,7 @@ module Prelude
     )
 where
 
+import Control.Applicative
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Catch (MonadMask, MonadThrow)
@@ -37,6 +42,7 @@ import Control.Monad.State (MonadState, evalStateT, gets, modify)
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
 import Data.Bits ((.&.))
+import Data.Coerce
 import Data.Foldable hiding (toList)
 import Data.Function ((&))
 import Data.Functor ((<&>))
@@ -48,11 +54,14 @@ import Data.Ix
 import Data.List (findIndex, intersperse, uncons)
 import Data.List.Extra
 import Data.Maybe hiding (mapMaybe)
+import Data.Monoid hiding (Alt)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Prettyprint.Doc (Pretty (pretty))
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
+import Debug.Trace
 import GHC.Generics (Generic)
 import GHC.IsList
 import System.Exit (ExitCode (ExitFailure), exitWith)
@@ -102,3 +111,17 @@ ix k f xs0
     go [] _ = pure []
     go (a : as) 0 = (: as) <$> f a
     go (a : as) i = (a :) <$> (go as $! i - 1)
+
+(#.) :: (Coercible c b) => (b -> c) -> (a -> b) -> (a -> c)
+(#.) _ = coerce (\x -> x :: b) :: forall a b. (Coercible b a) => a -> b
+
+type Getting r s a = (a -> Const r a) -> s -> Const r s
+
+(^?) :: s -> Getting (First a) s a -> Maybe a
+s ^? l = getFirst (foldMapOf l (First #. Just) s)
+
+foldMapOf :: Getting r s a -> (a -> r) -> s -> r
+foldMapOf l f = getConst #. l (Const #. f)
+
+is :: a -> Getting (First c) a c -> Bool
+a `is` c = isJust $ a ^? c
