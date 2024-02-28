@@ -93,3 +93,10 @@ test-suite spec
         System.Terminal.Widgets.SearchSelectSpec,
         System.Terminal.Widgets.SelectSpec,
         System.Terminal.Widgets.TextInputSpec,
+
+executable kitchen-sink
+    import:         common
+    main-is:        Main.hs
+    hs-source-dirs: app
+    build-depends:
+        terminal-widgets,

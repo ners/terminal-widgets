@@ -66,7 +66,7 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
         | numChecked s < s.maxSelect = flipCurrent s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
-    toText s =
+    toDoc s =
         let mkOption a =
                 mconcat
                     [ " "
@@ -76,7 +76,7 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
                     , " "
                     , s.optionText a
                     ]
-         in Text.unlines $
+         in pretty . Text.unlines $
                 fullPrompt s
                     <> RopeZipper.toText s.searchValue
                     : (mkOption <$> s.visibleOptions)

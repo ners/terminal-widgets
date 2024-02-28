@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# OPTIONS_GHC -Wno-missing-local-signatures #-}
 {-# OPTIONS_GHC -Wno-monomorphism-restriction #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-missing-local-signatures #-}
 
 module Prelude
     ( module Prelude
@@ -25,7 +25,6 @@ module Prelude
     )
 where
 
-import "base" Prelude
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Trans.Reader
@@ -55,6 +54,7 @@ import Text.Show.Functions ()
 import UnliftIO
 import UnliftIO.Async
 import UnliftIO.STM
+import "base" Prelude
 
 ishow :: (Show a, IsString s) => a -> s
 ishow = fromString . show
@@ -110,23 +110,23 @@ instance (Terminal t) => Terminal (CountingTerminal t) where
 
 type EventOrInterrupt = Either Interrupt Event
 
-data TestTerminal w = TestTerminal
+data TestState w = TestTerminal
     { eventQueue :: TQueue EventOrInterrupt
-    , done :: TMVar w 
+    , done :: TMVar w
     , terminal :: CountingTerminal VirtualTerminal
     }
 
 runTestWidget'
     :: (Widget w)
     => w
-    -> ReaderT (TestTerminal w) IO a
+    -> ReaderT (TestState w) IO a
     -> IO (a, w)
 runTestWidget' w runEvents = do
     eventQueue <- newTQueueIO
     let settings =
             VirtualTerminalSettings
                 { virtualType = ""
-                , virtualWindowSize = pure $ Size 160 50
+                , virtualWindowSize = pure $ Size 80 25
                 , virtualEvent =
                     peekTQueue eventQueue >>= \case
                         Left _ -> retrySTM
@@ -151,7 +151,7 @@ runTestWidget' w runEvents = do
                 atomically $ putTMVar done w'
                 pure w'
 
-sendEvent :: EventOrInterrupt -> ReaderT (TestTerminal w) IO w
+sendEvent :: EventOrInterrupt -> ReaderT (TestState w) IO w
 sendEvent e = do
     TestTerminal{..} <- ask
     atomically $ writeTQueue eventQueue e

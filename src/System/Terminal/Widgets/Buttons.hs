@@ -4,9 +4,9 @@ module System.Terminal.Widgets.Buttons where
 
 import Data.Char (toLower)
 import Data.Text qualified as Text
-import Prelude
 import Prettyprinter (Pretty (pretty), annotate)
 import System.Terminal.Widgets.Common
+import Prelude
 
 data Buttons = Buttons
     { prompt :: Text
@@ -28,25 +28,24 @@ instance Widget Buttons where
     handleEvent _ = id
     valid = const True
     submitEvent _ = Just $ KeyEvent EnterKey []
-    toText _ = undefined
-    lineCount _ = 1
-    render (maybeOld, new) = do
-        when (isNothing maybeOld) do
-            hideCursor
-            putText new.prompt
-        setCursorColumn $ Text.length new.prompt
-        forM_ (zip [0 ..] new.buttons) $ \(i, (label, accessKey)) -> do
-            putText " "
+    toDoc Buttons{..} = pretty prompt <> foldMap b (zip [0 ..] buttons)
+      where
+        b (i, (label, accessKey)) = do
             let (prefix, maybeSuffix) = second Text.uncons $ Text.break (accessKey `matches`) label
             let labelDoc =
                     case maybeSuffix of
                         Just (c, suffix) -> mconcat [pretty prefix, annotate underlined $ pretty c, pretty suffix]
                         Nothing -> pretty prefix
             let doc = mconcat ["[ ", labelDoc, " ]"]
-            if i == new.selected
-                then putDoc $ annotate inverted doc
-                else putDoc doc
-            putText " "
+            let ann =
+                    if i == selected
+                        then annotate inverted
+                        else id
+            " " <> ann doc <> " "
+    lineCount _ = 1
+    render (maybeOld, new) = do
+        when (isNothing maybeOld) hideCursor
+        defaultRender (maybeOld, new)
 
 moveLeft :: Buttons -> Buttons
 moveLeft = filtered (\s -> s.selected > 0) . #selected %~ pred

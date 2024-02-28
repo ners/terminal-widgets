@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "haskell-terminal": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1709159410,
+        "narHash": "sha256-BT0ClAsXsZYx9He7oNQQricb3usxwlYBZj713etxRJg=",
+        "owner": "ners",
+        "repo": "haskell-terminal",
+        "rev": "de3c2fe566fe9b655e46b303d7d93442dafff06c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ners",
+        "ref": "fix-virtual-terminal-erase",
+        "repo": "haskell-terminal",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1714906307,
@@ -18,6 +35,7 @@
     },
     "root": {
       "inputs": {
+        "haskell-terminal": "haskell-terminal",
         "nixpkgs": "nixpkgs",
         "text-rope-zipper": "text-rope-zipper"
       }

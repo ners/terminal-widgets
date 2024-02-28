@@ -6,6 +6,10 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    haskell-terminal = {
+      url = "github:ners/haskell-terminal/fix-virtual-terminal-erase";
+      flake = false;
+    };
     text-rope-zipper = {
       url = "github:ners/text-rope-zipper";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -23,7 +27,7 @@
       );
       hsSrc = root: with lib.fileset; toSource {
         inherit root;
-        fileset = fileFilter (file: any file.hasExt ["cabal" "hs" "md"] || file.type == "directory") ./.;
+        fileset = fileFilter (file: any file.hasExt [ "cabal" "hs" "md" ] || file.type == "directory") ./.;
       };
       pname = "terminal-widgets";
       src = hsSrc ./.;
@@ -35,6 +39,7 @@
             packageOverrides = lib.composeExtensions
               prev.haskell.packageOverrides
               (hfinal: hprev: {
+                terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
                 "${pname}" = hfinal.callCabal2nix pname src { };
               });
           };

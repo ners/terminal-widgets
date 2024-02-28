@@ -3,8 +3,8 @@
 module System.Terminal.Widgets.Select where
 
 import Data.Text qualified as Text
-import Prelude
 import System.Terminal.Widgets.Common
+import Prelude
 
 data SelectOption a = SelectOption
     { value :: a
@@ -18,7 +18,7 @@ data Select a = Select
     , optionText :: a -> Text
     , minSelect :: Int
     , maxSelect :: Int
-    , cursorRow :: Int
+    , cursorOption :: Int
     }
     deriving stock (Generic)
 
@@ -26,9 +26,9 @@ instance (Show a) => Widget (Select a) where
     cursor = lens getter setter
       where
         getter :: Select a -> Position
-        getter s = Position{row = s.cursorRow + 1, col = 2}
+        getter s = Position{row = s.cursorOption + 1, col = 2}
         setter :: Select a -> Position -> Select a
-        setter s Position{..} = s & #cursorRow .~ row - 1
+        setter s Position{..} = s & #cursorOption .~ row - 1
     handleEvent (KeyEvent (ArrowKey Upwards) []) s = moveUp s
     handleEvent (KeyEvent (ArrowKey Downwards) []) s = moveDown s
     handleEvent (KeyEvent SpaceKey []) s
@@ -36,7 +36,7 @@ instance (Show a) => Widget (Select a) where
         | numChecked s < s.maxSelect = flipCurrent s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
-    toText s =
+    toDoc s =
         let mkOption SelectOption{..} =
                 mconcat
                     [ " "
@@ -46,16 +46,17 @@ instance (Show a) => Widget (Select a) where
                     , " "
                     , s.optionText value
                     ]
-         in Text.unlines $ s.prompt : (mkOption <$> s.options)
+         in pretty $ Text.unlines $ s.prompt : (mkOption <$> s.options)
 
 moveUp :: Select a -> Select a
-moveUp = filtered (\s -> s.cursorRow > 0) . #cursorRow %~ pred
+moveUp = filtered (\s -> s.cursorOption > 0) . #cursorOption %~ pred
 
 moveDown :: Select a -> Select a
-moveDown = filtered (\s -> s.cursorRow < length s.options - 1) . #cursorRow %~ succ
+moveDown =
+    filtered (\s -> s.cursorOption < length s.options - 1) . #cursorOption %~ succ
 
 flipCurrent :: Select a -> Select a
-flipCurrent s = s & #options . ix s.cursorRow . #checked %~ not
+flipCurrent s = s & #options . ix s.cursorOption . #checked %~ not
 
 uncheckAll :: Select a -> Select a
 uncheckAll = #options . traverse . #checked .~ False
