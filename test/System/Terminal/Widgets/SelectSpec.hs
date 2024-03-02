@@ -24,7 +24,7 @@ instance (Arbitrary a) => Arbitrary (SelectOption a) where
 instance (Arbitrary a, Show a) => Arbitrary (Select a) where
     arbitrary = do
         options <- (:) <$> arbitrary <*> arbitrary
-        cursorOption <- chooseInt (0, length options -1)
+        cursorOption <- chooseInt (0, length options - 1)
         pure
             Select
                 { prompt = "prompt"

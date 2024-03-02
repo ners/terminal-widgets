@@ -44,8 +44,8 @@ instance Widget TextInput where
             . padLines
             . Text.split (== '\n')
             . valueTransform
-            . RopeZipper.toText $
-            value
+            . RopeZipper.toText
+            $ value
       where
         padLines :: [Text] -> [Text]
         padLines (x : xs) = (prompt <> x) : ((Text.replicate (Text.length prompt) " " <>) <$> xs)

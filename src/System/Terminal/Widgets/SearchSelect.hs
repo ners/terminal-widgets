@@ -4,6 +4,7 @@ module System.Terminal.Widgets.SearchSelect where
 
 import Data.Ord (Down (Down))
 import Data.Text qualified as Text
+import Data.Text.Prettyprint.Doc (annotate)
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import System.Terminal.Widgets.Common
@@ -27,8 +28,10 @@ data SearchSelect a = SearchSelect
     }
     deriving stock (Generic)
 
-fullPrompt :: SearchSelect a -> Text
-fullPrompt SearchSelect{..} = prompt <> mconcat [optionText o <> " " | o <- selections]
+fullPrompt :: (Monoid b) => SearchSelect a -> (Text -> b) -> (Text -> b) -> b
+fullPrompt SearchSelect{..} f g = f prompt <> mconcat (selection <$> selections)
+  where
+    selection o = g (" " <> optionText o <> " ") <> f " "
 
 textInput :: Lens' (SearchSelect a) TextInput
 textInput = lens getter setter
@@ -36,7 +39,7 @@ textInput = lens getter setter
     getter :: SearchSelect a -> TextInput
     getter s =
         TextInput
-            { prompt = fullPrompt s
+            { prompt = fullPrompt s id id
             , multiline = False
             , required = False
             , value = s.searchValue
@@ -62,12 +65,14 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
     handleEvent (KeyEvent BackspaceKey []) s | s.cursorRow == 0 && s.searchValue.cursor.posColumn == 0 = uncheckLast s
     handleEvent ev s | s.cursorRow == 0 = textInput %~ handleEvent ev >>> updateVisibleOptions $ s
     handleEvent (KeyEvent SpaceKey []) s
-        | s.maxSelect == 1 = uncheckLast >>> flipCurrent $ s
-        | numChecked s < s.maxSelect = flipCurrent s
+        | s.maxSelect == 1 = uncheckLast >>> flipCurrent >>> clearSearchValue $ s
+        | Just o <- s ^. current, o `elem` s.selections = flipCurrent s
+        | numChecked s < s.maxSelect = flipCurrent >>> clearSearchValue $ s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
     toDoc s =
-        let mkOption a =
+        let prompt = fullPrompt s pretty (annotate inverted . pretty)
+            mkOption a =
                 mconcat
                     [ " "
                     , Text.intercalate
@@ -76,10 +81,10 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
                     , " "
                     , s.optionText a
                     ]
-         in pretty . Text.unlines $
-                fullPrompt s
-                    <> RopeZipper.toText s.searchValue
-                    : (mkOption <$> s.visibleOptions)
+            options =
+                pretty . Text.unlines $
+                    RopeZipper.toText s.searchValue : (mkOption <$> s.visibleOptions)
+         in prompt <> options
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""
@@ -92,19 +97,30 @@ moveDown s = s & #cursorRow .~ min numVisible (succ s.cursorRow)
   where
     numVisible = length s.visibleOptions
 
+current :: Lens' (SearchSelect a) (Maybe a)
+current = lens getter setter
+  where
+    getter :: SearchSelect a -> Maybe a
+    getter s
+        | s.cursorRow < 1 = Nothing
+        | otherwise = s.visibleOptions !? (s.cursorRow - 1)
+    setter :: SearchSelect a -> Maybe a -> SearchSelect a
+    setter s mo
+        | s.cursorRow < 1 = s
+        | Just o <- mo = s & #visibleOptions . ix (s.cursorRow - 1) .~ o
+        | otherwise = s & #cursorRow .~ 0
+
 flipCurrent :: forall a. (Eq a) => SearchSelect a -> SearchSelect a
 flipCurrent s
-    | Just o <- current =
+    | Just o <- s ^. current =
         s
             & ( #selections
                     %~ if o `elem` s.selections
                         then uncheck o
                         else check o
               )
-            & clearSearchValue
     | otherwise = s
   where
-    current = s.visibleOptions !? (s.cursorRow - 1)
     uncheck :: a -> [a] -> [a]
     uncheck v = filter (/= v)
     check :: a -> [a] -> [a]

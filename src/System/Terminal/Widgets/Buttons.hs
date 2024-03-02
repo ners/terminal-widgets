@@ -19,7 +19,7 @@ instance Widget Buttons where
     cursor = lens getter setter
       where
         getter :: Buttons -> Position
-        getter t = Position{row = 1, col = t.selected}
+        getter t = Position{row = 0, col = t.selected}
         setter :: Buttons -> Position -> Buttons
         setter b Position{..} = b & #selected .~ col
     handleEvent (KeyEvent (ArrowKey Leftwards) []) = moveLeft
