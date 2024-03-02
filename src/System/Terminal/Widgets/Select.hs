@@ -33,7 +33,7 @@ instance (Show a) => Widget (Select a) where
     handleEvent (KeyEvent (ArrowKey Downwards) []) s = moveDown s
     handleEvent (KeyEvent SpaceKey []) s
         | s.maxSelect == 1 = s & flipCurrent . uncheckAll
-        | numChecked s < s.maxSelect = flipCurrent s
+        | numChecked s < s.maxSelect || s ^. current . #checked = flipCurrent s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
     toDoc s =
@@ -55,8 +55,16 @@ moveDown :: Select a -> Select a
 moveDown =
     filtered (\s -> s.cursorOption < length s.options - 1) . #cursorOption %~ succ
 
+current :: Lens' (Select a) (SelectOption a)
+current = lens getter setter
+  where
+    getter :: Select a -> SelectOption a
+    getter s = s.options !! s.cursorOption
+    setter :: Select a -> SelectOption a -> Select a
+    setter s o = s & #options . ix s.cursorOption .~ o
+
 flipCurrent :: Select a -> Select a
-flipCurrent s = s & #options . ix s.cursorOption . #checked %~ not
+flipCurrent s = s & current . #checked %~ not
 
 uncheckAll :: Select a -> Select a
 uncheckAll = #options . traverse . #checked .~ False

@@ -4,6 +4,7 @@ module System.Terminal.Widgets.SearchSelect where
 
 import Data.Ord (Down (Down))
 import Data.Text qualified as Text
+import Data.Text.Prettyprint.Doc (annotate)
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import System.Terminal.Widgets.Common
@@ -31,42 +32,48 @@ data SearchSelect a = SearchSelect
     }
     deriving stock (Generic)
 
-asTextInput :: SearchSelect a -> TextInput
-asTextInput s =
-    TextInput
-        { prompt = fullPrompt s
-        , multiline = False
-        , required = False
-        , value = s.searchValue
-        , valueTransform = id
-        }
+fullPrompt :: (Monoid b) => SearchSelect a -> (Text -> b) -> (Text -> b) -> b
+fullPrompt SearchSelect{..} f g = f prompt <> mconcat (selection <$> selections)
+  where
+    selection o = g (" " <> optionText o <> " ") <> f " "
 
-overTextInput :: (TextInput -> TextInput) -> SearchSelect a -> SearchSelect a
-overTextInput f s = s & #searchValue .~ (f $ asTextInput s).value
-
-fullPrompt :: SearchSelect a -> Text
-fullPrompt SearchSelect{..} = prompt <> mconcat [optionText o <> " " | o <- selections]
+textInput :: Lens' (SearchSelect a) TextInput
+textInput = lens getter setter
+  where
+    getter :: SearchSelect a -> TextInput
+    getter s =
+        TextInput
+            { prompt = fullPrompt s id id
+            , multiline = False
+            , required = False
+            , value = s.searchValue
+            , valueTransform = id
+            }
+    setter :: SearchSelect a -> TextInput -> SearchSelect a
+    setter s t = s & #searchValue .~ t.value
 
 instance (Eq a, Show a) => Widget (SearchSelect a) where
     cursor = lens getter setter
       where
         getter :: SearchSelect a -> Position
         getter s
-            | s.cursorRow == 0 = asTextInput s ^. cursor
+            | s.cursorRow == 0 = s ^. textInput . cursor
             | otherwise = Position{row = s.cursorRow, col = 2}
         setter :: SearchSelect a -> Position -> SearchSelect a
         setter s Position{..} = s & #cursorRow .~ row
     handleEvent (KeyEvent (ArrowKey Upwards) []) s = moveUp s
     handleEvent (KeyEvent (ArrowKey Downwards) []) s = moveDown s
     handleEvent (KeyEvent BackspaceKey []) s | s.cursorRow == 0 && s.searchValue.cursor.posColumn == 0 = uncheckLast s
-    handleEvent ev s | s.cursorRow == 0 = makeOptionsVisible $ overTextInput (handleEvent ev) s
+    handleEvent ev s | s.cursorRow == 0 = textInput %~ handleEvent ev >>> makeOptionsVisible $ s
     handleEvent (KeyEvent SpaceKey []) s
         | s.maxSelect == 1 = uncheckLast >>> flipCurrent >>> clearSearchValue $ s
+        | Just o <- s ^. current, o.value `elem` s.selections = flipCurrent s
         | numChecked s < s.maxSelect = flipCurrent >>> clearSearchValue $ s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
     toDoc s =
-        let mkOption SearchSelectOption{..} =
+        let prompt = fullPrompt s pretty (annotate inverted . pretty)
+            mkOption SearchSelectOption{..} =
                 mconcat
                     [ " "
                     , Text.intercalate
@@ -75,10 +82,10 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
                     , " "
                     , s.optionText value
                     ]
-         in pretty . Text.unlines $
-                fullPrompt s
-                    <> RopeZipper.toText s.searchValue
-                    : (mkOption <$> filter (.visible) s.options)
+            options =
+                pretty . Text.unlines $
+                    RopeZipper.toText s.searchValue : (mkOption <$> filter (.visible) s.options)
+         in prompt <> options
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""
@@ -95,9 +102,22 @@ moveDown s
   where
     numVisible = length $ filter (.visible) s.options
 
+current :: Lens' (SearchSelect a) (Maybe (SearchSelectOption a))
+current = lens getter setter
+  where
+    getter :: SearchSelect a -> Maybe (SearchSelectOption a)
+    getter s
+        | s.cursorRow < 1 = Nothing
+        | otherwise = filter (.visible) s.options !? (s.cursorRow - 1)
+    setter :: SearchSelect a -> Maybe (SearchSelectOption a) -> SearchSelect a
+    setter s mo
+        | s.cursorRow < 1 = s
+        | Just o <- mo = s & #options . ix (s.cursorRow - 1) .~ o
+        | otherwise = s & #cursorRow .~ 0
+
 flipCurrent :: forall a. (Eq a) => SearchSelect a -> SearchSelect a
 flipCurrent s
-    | Just o <- current =
+    | Just o <- s ^. current =
         s
             & #selections
             %~ if o.value `elem` s.selections
@@ -105,7 +125,6 @@ flipCurrent s
                 else check o.value
     | otherwise = s
   where
-    current = filter (.visible) s.options !? (s.cursorRow - 1)
     uncheck :: a -> [a] -> [a]
     uncheck v = filter (/= v)
     check :: a -> [a] -> [a]
