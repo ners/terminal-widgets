@@ -21,7 +21,7 @@ module Prelude
     , module Data.Monoid
     , module Data.String
     , module Data.Text
-    , module Data.Text.Prettyprint.Doc
+    , module Prettyprinter
     , module Debug.Trace
     , module GHC.Generics
     , module GHC.IsList
@@ -58,12 +58,12 @@ import Data.Monoid hiding (Alt)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Prettyprint.Doc (Pretty (pretty))
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import Debug.Trace
 import GHC.Generics (Generic)
 import GHC.IsList
+import Prettyprinter (Pretty (pretty), annotate)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO (BufferMode (NoBuffering), IO, hSetBuffering, stdout)
 import System.Terminal
