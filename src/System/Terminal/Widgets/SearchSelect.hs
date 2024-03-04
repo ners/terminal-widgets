@@ -4,7 +4,6 @@ module System.Terminal.Widgets.SearchSelect where
 
 import Data.Ord (Down (Down))
 import Data.Text qualified as Text
-import Data.Text.Prettyprint.Doc (annotate)
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import System.Terminal.Widgets.Common

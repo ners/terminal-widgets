@@ -3,7 +3,6 @@
 
 module System.Terminal.Render where
 
-import Data.List.Extra qualified as List
 import Data.Text qualified as Text
 import Prettyprinter
 import Prelude
@@ -50,12 +49,13 @@ render maybeOld (newPos, newDoc) = flip evalStateT (maybe Position{row = 0, col 
     putDoc :: forall t m m'. (MonadCursor t m m') => Doc (Attribute m') -> m ()
     putDoc d = do
         lift $ Prelude.putDoc d
-        let lines = List.split (`is` #_TLine) $ tokenise @m' d
-        let lastLineLen = sum . fmap tokenWidth . last $ lines
+        let doc = layoutPretty defaultLayoutOptions d
+        let numLines = countLines doc
+        let len = lastLineLen doc
         modify $
-            if length lines > 1
-                then #row %~ (+ (length lines - 1)) >>> #col .~ lastLineLen
-                else #col %~ (+ lastLineLen)
+            if numLines > 1
+                then #row %~ (+ (numLines - 1)) >>> #col .~ len
+                else #col %~ (+ len)
 
 renderLine :: (MonadScreen m) => Text -> Text -> m ()
 renderLine oldText newText =
@@ -66,25 +66,35 @@ renderLine oldText newText =
         putText newSuffix
         when (oldSuffixLen > Text.length newSuffix) $ eraseInLine EraseForward
 
-data Token m
-    = TText Int Text
-    | TLine
-    | TAnnPush (Attribute m)
-    | TAnnPop
-    deriving stock (Generic)
+stail :: SimpleDocStream (Attribute m) -> SimpleDocStream (Attribute m)
+stail SFail = SFail
+stail SEmpty = SEmpty
+stail (SChar _ rest) = rest
+stail (SText _ _ rest) = rest
+stail (SLine _ rest) = rest
+stail (SAnnPush _ rest) = rest
+stail (SAnnPop rest) = rest
 
-tokenWidth :: Token m -> Int
-tokenWidth (TText len _) = len
-tokenWidth _ = 0
+countLines :: SimpleDocStream (Attribute m) -> Int
+countLines SFail = 0
+countLines SEmpty = 0
+countLines (SLine _ rest) = 1 + countLines rest
+countLines (stail -> rest) = 0 + countLines rest
 
-tokenise :: forall m. (MonadTerminal m) => Doc (Attribute m) -> [Token m]
-tokenise = go . layoutPretty defaultLayoutOptions
+tokenLen :: SimpleDocStream (Attribute m) -> Int
+tokenLen SFail = 0
+tokenLen SEmpty = 0
+tokenLen (SChar _ _) = 1
+tokenLen (SText len _ _) = len
+tokenLen (SLine len _) = len
+tokenLen (SAnnPush _ _) = 0
+tokenLen (SAnnPop _) = 0
+
+lastLineLen :: forall m. SimpleDocStream (Attribute m) -> Int
+lastLineLen = go 0
   where
-    go :: SimpleDocStream (Attribute m) -> [Token m]
-    go SFail = []
-    go SEmpty = []
-    go (SChar c rest) = TText 1 (Text.singleton c) : go rest
-    go (SText len text rest) = TText len text : go rest
-    go (SLine indentation rest) = TLine : TText indentation (Text.replicate indentation " ") : go rest
-    go (SAnnPush ann rest) = TAnnPush ann : go rest
-    go (SAnnPop rest) = TAnnPop : go rest
+    go :: Int -> SimpleDocStream (Attribute m) -> Int
+    go n SFail = n
+    go n SEmpty = n
+    go _ (SLine len rest) = go len rest
+    go n s = go (n + tokenLen s) (stail s)

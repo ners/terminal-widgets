@@ -6,9 +6,7 @@ module System.Terminal.Widgets.Common where
 
 import Control.Applicative
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Coerce
 import Data.Monoid hiding (Alt)
-import Data.Text qualified as Text
 import Prettyprinter
 import System.Terminal.Render qualified as Render
 import Prelude
@@ -29,15 +27,14 @@ class Widget w where
     lineCount :: w -> Int
     lineCount =
         (1 +)
-            . length
-            . filter (`is` #_TLine)
-            . Render.tokenise @(TerminalT LocalTerminal IO)
-            . toDoc
-    render :: forall m. (MonadTerminal m) => (Maybe w, w) -> m ()
+            . Render.countLines
+            . layoutPretty defaultLayoutOptions
+            . toDoc @_ @(TerminalT LocalTerminal IO)
+    render :: forall m. (MonadTerminal m) => Maybe w -> w -> m ()
     render = defaultRender
 
-defaultRender :: forall w m. (Widget w, MonadTerminal m) => (Maybe w, w) -> m ()
-defaultRender (maybeOld, new) = Render.render (r <$> maybeOld) (r new)
+defaultRender :: forall w m. (Widget w, MonadTerminal m) => Maybe w -> w -> m ()
+defaultRender maybeOld new = Render.render (r <$> maybeOld) (r new)
   where
     r :: w -> (Position, Doc (Attribute m))
     r w = (w ^. cursor, toDoc w)
@@ -61,30 +58,24 @@ instance IsList Modifiers where
 runWidget'
     :: forall m w
      . (MonadTerminal m, Widget w)
-    => ((Maybe w, w) -> m ())
-    -> ((Maybe w, w) -> m ())
+    => (Maybe w -> w -> m ())
+    -> (Maybe w -> w -> m ())
+    -> (Maybe w -> w -> m ())
     -> w
     -> m w
-runWidget' preRender postRender = go Nothing
+runWidget' preRender postRender cleanup = go Nothing
   where
-    cleanup :: w -> m ()
-    cleanup w = do
-        let dy = lineCount w - (w ^. cursor . #row) - 1
-        when (dy > 0) $ moveCursorDown dy
-        putLn
-        resetAttributes
-        showCursor
     go :: Maybe w -> w -> m w
     go maybeOld current = do
-        preRender (maybeOld, current)
-        render (maybeOld, current)
-        postRender (maybeOld, current)
+        preRender maybeOld current
+        render maybeOld current
+        postRender maybeOld current
         awaitEvent >>= \case
             Left Interrupt -> do
-                cleanup current
+                cleanup maybeOld current
                 liftIO $ exitWith $ ExitFailure 1
             Right e | Just e == submitEvent current -> do
-                cleanup current
+                cleanup maybeOld current
                 pure current
             Right e -> do
                 let new = handleEvent e current
@@ -94,4 +85,14 @@ runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
 runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
 
 runWidget :: forall m w. (MonadTerminal m, Widget w) => w -> m w
-runWidget = runWidget' (const $ pure ()) (const flush)
+runWidget = runWidget' preRender postRender cleanup
+  where
+    preRender, postRender, cleanup :: Maybe w -> w -> m ()
+    preRender _ _ = pure ()
+    postRender _ _ = flush
+    cleanup _ w = do
+        let dy = lineCount w - (w ^. cursor . #row) - 1
+        when (dy > 0) $ moveCursorDown dy
+        putLn
+        resetAttributes
+        showCursor

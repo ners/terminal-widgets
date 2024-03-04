@@ -4,7 +4,6 @@ module System.Terminal.Widgets.Buttons where
 
 import Data.Char (toLower)
 import Data.Text qualified as Text
-import Prettyprinter (Pretty (pretty), annotate)
 import System.Terminal.Widgets.Common
 import Prelude
 
@@ -43,9 +42,9 @@ instance Widget Buttons where
                         else id
             " " <> ann doc <> " "
     lineCount _ = 1
-    render (maybeOld, new) = do
+    render maybeOld new = do
         when (isNothing maybeOld) hideCursor
-        defaultRender (maybeOld, new)
+        defaultRender maybeOld new
 
 moveLeft :: Buttons -> Buttons
 moveLeft = filtered (\s -> s.selected > 0) . #selected %~ pred
