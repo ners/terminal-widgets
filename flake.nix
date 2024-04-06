@@ -35,9 +35,9 @@
       pname = "terminal-widgets";
       src = hsSrc ./.;
       ghcs = [ "ghc94" "ghc96" "ghc98" ];
-      overlay = final: prev: lib.pipe prev [
-        (inputs.text-rope-zipper.overlays.default final)
-        (prev: {
+      overlay = lib.composeManyExtensions [
+        (inputs.text-rope-zipper.overlays.default)
+        (final: prev: {
           haskell = prev.haskell // {
             packageOverrides = lib.composeExtensions
               prev.haskell.packageOverrides
@@ -74,15 +74,15 @@
         in
         {
           formatter.${system} = pkgs.nixpkgs-fmt;
-          legacyPackages.${system} = { inherit (pkgs) haskell haskellPackages; };
+          legacyPackages.${system} = pkgs;
           packages.${system} = { inherit default; };
           devShells.${system} =
             foreach hps (ghcName: hp: {
               ${ghcName} = hp.shellFor {
                 packages = ps: [ ps.${pname} ];
                 nativeBuildInputs = with hp; [
-                  cabal-install
-                  fourmolu
+                  pkgs'.haskellPackages.cabal-install
+                  pkgs'.haskellPackages.fourmolu
                   haskell-language-server
                 ];
               };
