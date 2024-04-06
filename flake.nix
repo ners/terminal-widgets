@@ -36,7 +36,7 @@
       src = hsSrc ./.;
       ghcs = [ "ghc94" "ghc96" "ghc98" ];
       overlay = lib.composeManyExtensions [
-        (inputs.text-rope-zipper.overlays.default)
+        inputs.text-rope-zipper.overlays.default
         (final: prev: {
           haskell = prev.haskell // {
             packageOverrides = lib.composeExtensions

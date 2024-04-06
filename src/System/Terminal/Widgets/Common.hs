@@ -68,3 +68,6 @@ runWidget = go Nothing
             Right e -> do
                 let new = handleEvent e current
                 go (Just current) new
+
+runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
+runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
