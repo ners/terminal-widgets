@@ -75,10 +75,10 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
                     , " "
                     , s.optionText value
                     ]
-         in Text.unlines
-                $ fullPrompt s
-                <> RopeZipper.toText s.searchValue
-                : (mkOption <$> filter (.visible) s.options)
+         in Text.unlines $
+                fullPrompt s
+                    <> RopeZipper.toText s.searchValue
+                    : (mkOption <$> filter (.visible) s.options)
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""
@@ -92,14 +92,17 @@ moveDown :: SearchSelect a -> SearchSelect a
 moveDown s
     | s.cursorRow < numVisible = s & #cursorRow %~ succ
     | otherwise = s
-    where numVisible = length $ filter (.visible) s.options
+  where
+    numVisible = length $ filter (.visible) s.options
 
 flipCurrent :: forall a. (Eq a) => SearchSelect a -> SearchSelect a
 flipCurrent s
     | Just o <- current =
-        s & #selections %~ if o.value `elem` s.selections
-            then uncheck o.value
-            else check o.value
+        s
+            & #selections
+            %~ if o.value `elem` s.selections
+                then uncheck o.value
+                else check o.value
     | otherwise = s
   where
     current = filter (.visible) s.options !? (s.cursorRow - 1)
@@ -125,9 +128,9 @@ makeOptionsVisible s
     filterText = RopeZipper.toText s.searchValue
     score :: SearchSelectOption a -> Fuzzy.Fuzzy (SearchSelectOption a) Text
     score original =
-        fromMaybe Fuzzy.Fuzzy{original, rendered = ishow original.value, score = -1}
-            $ Fuzzy.match filterText original "" "" (ishow . (.value)) False
+        fromMaybe Fuzzy.Fuzzy{original, rendered = ishow original.value, score = -1} $
+            Fuzzy.match filterText original "" "" (ishow . (.value)) False
     (newVisible, newInvisible) = splitAt s.maxVisible $ sortOn (Down . Fuzzy.score) $ score <$> s.options
     newOptions =
-        (newVisible <&> (\x -> x.original & #visible .~ (x.score > 0)))
+        (newVisible <&> (\x -> x.original & #visible .~ (x.score >= 0)))
             <> (newInvisible <&> ((.original) >>> #visible .~ False))
