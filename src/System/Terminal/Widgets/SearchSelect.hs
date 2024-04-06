@@ -11,18 +11,14 @@ import System.Terminal.Widgets.Common
 import System.Terminal.Widgets.TextInput
 import Text.Fuzzy qualified as Fuzzy
 
-data SearchSelectOption a = SearchSelectOption
-    { value :: a
-    , visible :: Bool
-    }
-    deriving stock (Generic)
-
 data SearchSelect a = SearchSelect
     { prompt :: Text
     , searchValue :: RopeZipper
-    , options :: [SearchSelectOption a]
+    , options :: [a]
+    , visibleOptions :: [a]
     , selections :: [a]
     , optionText :: a -> Text
+    , newOption :: Text -> Maybe a
     , minSelect :: Int
     , maxSelect :: Int
     , minSearchLength :: Int
@@ -31,81 +27,84 @@ data SearchSelect a = SearchSelect
     }
     deriving stock (Generic)
 
-asTextInput :: SearchSelect a -> TextInput
-asTextInput s =
-    TextInput
-        { prompt = fullPrompt s
-        , multiline = False
-        , required = False
-        , value = s.searchValue
-        , valueTransform = id
-        }
-
-overTextInput :: (TextInput -> TextInput) -> SearchSelect a -> SearchSelect a
-overTextInput f s = s & #searchValue .~ (f $ asTextInput s).value
-
 fullPrompt :: SearchSelect a -> Text
 fullPrompt SearchSelect{..} = prompt <> mconcat [optionText o <> " " | o <- selections]
+
+textInput :: Lens' (SearchSelect a) TextInput
+textInput = lens getter setter
+  where
+    getter :: SearchSelect a -> TextInput
+    getter s =
+        TextInput
+            { prompt = fullPrompt s
+            , multiline = False
+            , required = False
+            , value = s.searchValue
+            , valueTransform = id
+            }
+    setter :: SearchSelect a -> TextInput -> SearchSelect a
+    setter s t = s & #searchValue .~ t.value
+
+filterText :: Lens' (SearchSelect a) Text
+filterText = #searchValue . lens RopeZipper.toText (const RopeZipper.fromText)
 
 instance (Eq a, Show a) => Widget (SearchSelect a) where
     cursor = lens getter setter
       where
         getter :: SearchSelect a -> Position
         getter s
-            | s.cursorRow == 0 = asTextInput s ^. cursor
+            | s.cursorRow == 0 = s ^. textInput . cursor
             | otherwise = Position{row = s.cursorRow, col = 2}
         setter :: SearchSelect a -> Position -> SearchSelect a
         setter s Position{..} = s & #cursorRow .~ row
     handleEvent (KeyEvent (ArrowKey Upwards) []) s = moveUp s
     handleEvent (KeyEvent (ArrowKey Downwards) []) s = moveDown s
     handleEvent (KeyEvent BackspaceKey []) s | s.cursorRow == 0 && s.searchValue.cursor.posColumn == 0 = uncheckLast s
-    handleEvent ev s | s.cursorRow == 0 = makeOptionsVisible $ overTextInput (handleEvent ev) s
+    handleEvent ev s | s.cursorRow == 0 = textInput %~ handleEvent ev >>> updateVisibleOptions $ s
     handleEvent (KeyEvent SpaceKey []) s
-        | s.maxSelect == 1 = uncheckLast >>> flipCurrent >>> clearSearchValue $ s
-        | numChecked s < s.maxSelect = flipCurrent >>> clearSearchValue $ s
+        | s.maxSelect == 1 = uncheckLast >>> flipCurrent $ s
+        | numChecked s < s.maxSelect = flipCurrent s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
     toText s =
-        let mkOption SearchSelectOption{..} =
+        let mkOption a =
                 mconcat
                     [ " "
                     , Text.intercalate
-                        (if value `elem` s.selections then "*" else " ")
+                        (if a `elem` s.selections then "*" else " ")
                         (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
                     , " "
-                    , s.optionText value
+                    , s.optionText a
                     ]
          in Text.unlines $
                 fullPrompt s
                     <> RopeZipper.toText s.searchValue
-                    : (mkOption <$> filter (.visible) s.options)
+                    : (mkOption <$> s.visibleOptions)
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""
 
 moveUp :: SearchSelect a -> SearchSelect a
-moveUp s
-    | s.cursorRow < 1 = s
-    | otherwise = s & #cursorRow %~ pred
+moveUp s = s & #cursorRow .~ max 0 (s.cursorRow - 1)
 
 moveDown :: SearchSelect a -> SearchSelect a
-moveDown s
-    | s.cursorRow < numVisible = s & #cursorRow %~ succ
-    | otherwise = s
+moveDown s = s & #cursorRow .~ min numVisible (succ s.cursorRow)
   where
-    numVisible = length $ filter (.visible) s.options
+    numVisible = length s.visibleOptions
 
 flipCurrent :: forall a. (Eq a) => SearchSelect a -> SearchSelect a
 flipCurrent s
     | Just o <- current =
         s
-            & #selections
-            %~ if o.value `elem` s.selections
-                then uncheck o.value
-                else check o.value
+            & ( #selections
+                    %~ if o `elem` s.selections
+                        then uncheck o
+                        else check o
+              )
+            & clearSearchValue
     | otherwise = s
   where
-    current = filter (.visible) s.options !? (s.cursorRow - 1)
+    current = s.visibleOptions !? (s.cursorRow - 1)
     uncheck :: a -> [a] -> [a]
     uncheck v = filter (/= v)
     check :: a -> [a] -> [a]
@@ -119,18 +118,21 @@ uncheckLast s
 numChecked :: SearchSelect a -> Int
 numChecked = length . (.selections)
 
-makeOptionsVisible :: forall a. (Show a) => SearchSelect a -> SearchSelect a
-makeOptionsVisible s
-    | Text.length filterText < s.minSearchLength =
-        s & #options . traverse . #visible .~ False
-    | otherwise = s & #options .~ newOptions
+updateVisibleOptions :: forall a. (Show a) => SearchSelect a -> SearchSelect a
+updateVisibleOptions s
+    | Text.length (s ^. filterText) < s.minSearchLength =
+        s & #visibleOptions .~ []
+    | otherwise = s & #visibleOptions .~ newVisible <> newOptions
   where
-    filterText = RopeZipper.toText s.searchValue
-    score :: SearchSelectOption a -> Fuzzy.Fuzzy (SearchSelectOption a) Text
+    score :: a -> Fuzzy.Fuzzy a Text
     score original =
-        fromMaybe Fuzzy.Fuzzy{original, rendered = ishow original.value, score = -1} $
-            Fuzzy.match filterText original "" "" (ishow . (.value)) False
-    (newVisible, newInvisible) = splitAt s.maxVisible $ sortOn (Down . Fuzzy.score) $ score <$> s.options
-    newOptions =
-        (newVisible <&> (\x -> x.original & #visible .~ (x.score >= 0)))
-            <> (newInvisible <&> ((.original) >>> #visible .~ False))
+        fromMaybe Fuzzy.Fuzzy{original, rendered = ishow original, score = -1} $
+            Fuzzy.match (s ^. filterText) original "" "" ishow False
+    (newVisible, _) =
+        splitAt s.maxVisible
+            . fmap (.original)
+            . takeWhile ((0 <=) . Fuzzy.score)
+            . sortOn (Down . Fuzzy.score)
+            $ score
+                <$> s.options
+    newOptions = maybeToList . s.newOption $ s ^. filterText

@@ -57,8 +57,8 @@ instance Widget TextInput where
             newLines = getLines new
 
         let deltas =
-                filter (\(_, oldText, newText) -> oldText /= newText) $
-                    zip3 [0 :: Int ..] oldLines newLines
+                filter (\(_, oldText, newText) -> oldText /= newText)
+                    $ zip3 [0 :: Int ..] oldLines newLines
 
         forM_ deltas $ \(row, oldText, newText) -> do
             moveToRow row
