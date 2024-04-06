@@ -9,9 +9,9 @@ import Prettyprinter (Pretty (pretty), annotate)
 import System.Terminal.Widgets.Common
 
 data Buttons = Buttons
-    { prompt :: !Text
-    , buttons :: ![(Text, Maybe Char)]
-    , selected :: !Int
+    { prompt :: Text
+    , buttons :: [(Text, Maybe Char)]
+    , selected :: Int
     }
     deriving stock (Generic, Eq)
 

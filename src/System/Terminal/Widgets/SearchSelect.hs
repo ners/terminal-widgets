@@ -12,22 +12,22 @@ import System.Terminal.Widgets.TextInput
 import Text.Fuzzy qualified as Fuzzy
 
 data SearchSelectOption a = SearchSelectOption
-    { value :: !a
-    , visible :: !Bool
+    { value :: a
+    , visible :: Bool
     }
     deriving stock (Generic)
 
 data SearchSelect a = SearchSelect
-    { prompt :: !Text
-    , searchValue :: !RopeZipper
-    , options :: ![SearchSelectOption a]
-    , selections :: ![a]
+    { prompt :: Text
+    , searchValue :: RopeZipper
+    , options :: [SearchSelectOption a]
+    , selections :: [a]
     , optionText :: a -> Text
-    , minSelect :: !Int
-    , maxSelect :: !Int
-    , minSearchLength :: !Int
-    , maxVisible :: !Int
-    , cursorRow :: !Int
+    , minSelect :: Int
+    , maxSelect :: Int
+    , minSearchLength :: Int
+    , maxVisible :: Int
+    , cursorRow :: Int
     }
     deriving stock (Generic)
 

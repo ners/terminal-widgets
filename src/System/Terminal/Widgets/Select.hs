@@ -7,18 +7,18 @@ import Internal.Prelude
 import System.Terminal.Widgets.Common
 
 data SelectOption a = SelectOption
-    { value :: !a
-    , checked :: !Bool
+    { value :: a
+    , checked :: Bool
     }
     deriving stock (Generic)
 
 data Select a = Select
-    { prompt :: !Text
-    , options :: ![SelectOption a]
+    { prompt :: Text
+    , options :: [SelectOption a]
     , optionText :: a -> Text
-    , minSelect :: !Int
-    , maxSelect :: !Int
-    , cursorRow :: !Int
+    , minSelect :: Int
+    , maxSelect :: Int
+    , cursorRow :: Int
     }
     deriving stock (Generic)
 

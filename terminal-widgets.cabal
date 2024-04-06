@@ -45,6 +45,7 @@ common common
         OverloadedStrings
         RecordWildCards
         RecursiveDo
+        StrictData
         TypeFamilies
         ViewPatterns
 
