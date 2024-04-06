@@ -38,7 +38,7 @@ import Control.Arrow
 import Control.Monad
 import Control.Monad.Catch (MonadMask, MonadThrow)
 import Control.Monad.Reader (MonadReader)
-import Control.Monad.State (MonadState, evalStateT, gets, modify)
+import Control.Monad.State (MonadState, evalStateT)
 import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Trans.Class (lift)
 import Data.Bits ((.&.))

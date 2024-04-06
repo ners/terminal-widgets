@@ -6,7 +6,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    nix-filter.url = "github:numtide/nix-filter";
     haskell-terminal = {
       url = "github:ners/haskell-terminal/fix-virtual-terminal-erase";
       flake = false;
@@ -14,7 +13,6 @@
     text-rope-zipper = {
       url = "github:ners/text-rope-zipper";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nix-filter.follows = "nix-filter";
     };
   };
 
@@ -27,28 +25,24 @@
         else if isAttrs xs then mapAttrsToList f xs
         else throw "foreach: expected list or attrset but got ${typeOf xs}"
       );
-      hsSrc = root: inputs.nix-filter {
+      hsSrc = root: with lib.fileset; toSource {
         inherit root;
-        include = with inputs.nix-filter.lib; [
-          (matchExt "cabal")
-          (matchExt "hs")
-          (matchExt "md")
-          isDirectory
-        ];
+        fileset = fileFilter (file: any file.hasExt ["cabal" "hs" "md"] || file.type == "directory") ./.;
       };
       pname = "terminal-widgets";
       src = hsSrc ./.;
       ghcs = [ "ghc94" "ghc96" "ghc98" ];
-      overlay = final: prev: lib.pipe prev [
-        (inputs.text-rope-zipper.overlays.default final)
-        (prev: {
+      overlay = lib.composeManyExtensions [
+        inputs.text-rope-zipper.overlays.default
+        (final: prev: {
           haskell = prev.haskell // {
-            packageOverrides = lib.composeExtensions
+            packageOverrides = lib.composeManyExtensions [
               prev.haskell.packageOverrides
               (hfinal: hprev: {
                 terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
                 "${pname}" = hfinal.callCabal2nix pname src { };
-              });
+              })
+            ];
           };
         })
       ];
@@ -79,15 +73,15 @@
         in
         {
           formatter.${system} = pkgs.nixpkgs-fmt;
-          legacyPackages.${system} = { inherit (pkgs) haskell haskellPackages; };
+          legacyPackages.${system} = pkgs;
           packages.${system} = { inherit default; };
           devShells.${system} =
             foreach hps (ghcName: hp: {
               ${ghcName} = hp.shellFor {
                 packages = ps: [ ps.${pname} ];
                 nativeBuildInputs = with hp; [
-                  cabal-install
-                  fourmolu
+                  pkgs'.haskellPackages.cabal-install
+                  pkgs'.haskellPackages.fourmolu
                   haskell-language-server
                 ];
               };

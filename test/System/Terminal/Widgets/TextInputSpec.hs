@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module System.Terminal.Widgets.TextInputSpec where
@@ -7,7 +6,7 @@ import Control.Monad.Trans.Reader (asks)
 import Data.Text qualified as Text
 import System.Terminal
 import System.Terminal.Internal
-import System.Terminal.Widgets.Common (Widget (submitEvent))
+import System.Terminal.Widgets.Common (Widget (submitEvent), cursor)
 import System.Terminal.Widgets.TextInput
 import Prelude
 
@@ -18,25 +17,37 @@ deriving stock instance Show TextInput
 spec :: Spec
 spec = do
     it "renders textinput correctly" do
-        let input =
+        let prompt = "p:" :: Text
+            promptPrefix = Text.map (const ' ') prompt
+            char = 'x'
+            charText = Text.singleton char
+            input =
                 TextInput
-                    { prompt = "p:"
+                    { prompt
                     , value = ""
                     , valueTransform = id
                     , multiline = True
                     , required = False
                     }
-        (term, input') <- runTestWidget' input do
+        (term, _input') <- runTestWidget' input do
             term <- asks (.terminal)
-            forM_ (replicate 3 ()) $ \_ -> do
-                void . sendEvent . Right $ KeyEvent (CharKey 'x') []
-                void . sendEvent . Right $ KeyEvent EnterKey []
+            for_ [0 .. 3] $ \i -> do
+                void . sendEvent . Right $ KeyEvent (CharKey char) mempty
+                input' <- sendEvent . Right $ KeyEvent EnterKey mempty
+                let expectedCursor = Position{row = i + 1, col = 2}
+                let actualWidgetCursor = view cursor input'
+                liftIO $ actualWidgetCursor `shouldBe` expectedCursor
+                actualCursor <- readTVarIO term.terminal.virtualCursor
+                liftIO $ actualCursor `shouldBe` expectedCursor
+                let expectedLines = prompt <> charText : replicate i (promptPrefix <> charText)
+                actualLines <- fmap fromString <$> readTVarIO term.terminal.virtualWindow
+                liftIO $ actualLines `shouldSatisfy` linesMatch expectedLines
+            for_ (replicate 10 ()) $
+                const . sendEvent . Right $
+                    KeyEvent BackspaceKey mempty
+            w <- sendEvent $ Right (KeyEvent BackspaceKey mempty)
             screenLines <- fmap fromString <$> readTVarIO term.terminal.virtualWindow
-            liftIO $ screenLines `shouldSatisfy` linesMatch ["p:x", "  x", "  x"]
-            forM_ (replicate 100 ()) $ const . sendEvent . Right $ KeyEvent BackspaceKey []
-            w <- sendEvent $ Right (KeyEvent BackspaceKey [])
-            screenLines <- fmap fromString <$> readTVarIO term.terminal.virtualWindow
-            liftIO $ screenLines `shouldSatisfy` linesMatch ["p:"]
+            liftIO $ screenLines `shouldSatisfy` linesMatch [prompt]
             sendEvent . Right . fromJust . submitEvent $ w
             pure term
         readTVarIO term.commandCounter `shouldNotReturn` 0
