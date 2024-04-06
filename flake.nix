@@ -36,12 +36,13 @@
         inputs.text-rope-zipper.overlays.default
         (final: prev: {
           haskell = prev.haskell // {
-            packageOverrides = lib.composeExtensions
+            packageOverrides = lib.composeManyExtensions [
               prev.haskell.packageOverrides
               (hfinal: hprev: {
                 terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
                 "${pname}" = hfinal.callCabal2nix pname src { };
-              });
+              })
+            ];
           };
         })
       ];

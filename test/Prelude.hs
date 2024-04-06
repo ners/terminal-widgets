@@ -7,6 +7,7 @@ module Prelude
     ( module Prelude
     , module Control.Arrow
     , module Control.Monad
+    , module Data.Foldable
     , module Data.Function
     , module Data.Functor
     , module Data.Generics.Internal.VL
@@ -28,6 +29,7 @@ where
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Trans.Reader
+import Data.Foldable (for_)
 import Data.Function
 import Data.Functor
 import Data.Functor.Identity (Identity)
@@ -142,12 +144,14 @@ runTestWidget' w runEvents = do
         let countingTerminal = CountingTerminal{..}
         let testTerminal = TestTerminal{terminal = countingTerminal, ..}
         concurrently (atomically (takeTMVar done) >> runReaderT runEvents testTerminal) do
-            let preRender _ = pure ()
-            let postRender (_, w) = do
+            let setup _ = pure ()
+                cleanup _ _ = pure ()
+                preRender _ _ = pure ()
+                postRender _ w' = do
                     flush
-                    atomically $ putTMVar done w
+                    atomically $ putTMVar done w'
             flip runTerminalT countingTerminal do
-                w' <- runWidget' preRender postRender w
+                w' <- runWidget' setup preRender postRender cleanup w
                 atomically $ putTMVar done w'
                 pure w'
 

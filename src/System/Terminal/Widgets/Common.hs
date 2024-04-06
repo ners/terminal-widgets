@@ -58,12 +58,15 @@ instance IsList Modifiers where
 runWidget'
     :: forall m w
      . (MonadTerminal m, Widget w)
-    => (Maybe w -> w -> m ())
+    => (w -> m ())
+    -> (Maybe w -> w -> m ())
     -> (Maybe w -> w -> m ())
     -> (Maybe w -> w -> m ())
     -> w
     -> m w
-runWidget' preRender postRender cleanup = go Nothing
+runWidget' setup preRender postRender cleanup w = do
+    setup w
+    go Nothing w
   where
     go :: Maybe w -> w -> m w
     go maybeOld current = do
@@ -85,8 +88,10 @@ runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
 runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
 
 runWidget :: forall m w. (MonadTerminal m, Widget w) => w -> m w
-runWidget = runWidget' preRender postRender cleanup
+runWidget = runWidget' setup preRender postRender cleanup
   where
+    setup :: w -> m ()
+    setup _ = pure ()
     preRender, postRender, cleanup :: Maybe w -> w -> m ()
     preRender _ _ = pure ()
     postRender _ _ = flush
