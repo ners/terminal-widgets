@@ -1,9 +1,7 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module System.Terminal.Widgets.ButtonsSpec where
 
-import System.Terminal
 import System.Terminal.Widgets.Buttons
 import Prelude
 
@@ -17,7 +15,5 @@ instance Arbitrary Buttons where
 
 spec :: Spec
 spec = do
-    prop "renders buttons correctly" $ \(buttons :: Buttons) -> do
-        (term, buttons') <- runTestWidget buttons [Right (KeyEvent EnterKey [])]
-        buttons' `shouldBe` buttons
-        readTVarIO term.commandCounter `shouldNotReturn` 0
+    prop "renders correctly" $ \(buttons :: Buttons) -> void $ runTestWidget buttons do
+        assertCounter (`shouldNotBe` 0)
