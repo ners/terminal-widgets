@@ -68,13 +68,14 @@ library
         System.Terminal.Widgets.SearchSelect,
         System.Terminal.Widgets.Select,
         System.Terminal.Widgets.TextInput,
+    other-modules:
+        Prelude,
+        Prettyprinter.Extra,
     build-depends:
         exceptions,
         fuzzy,
         mtl,
         prettyprinter,
-    other-modules:
-        Prelude,
 
 test-suite spec
     import:           common
@@ -83,6 +84,7 @@ test-suite spec
     hs-source-dirs:   test
     main-is:          Spec.hs
     build-depends:
+        HUnit,
         QuickCheck,
         hspec,
         terminal-widgets,

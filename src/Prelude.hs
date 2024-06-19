@@ -23,8 +23,8 @@ module Prelude
     , module Data.Text
     , module Prettyprinter
     , module Debug.Trace
+    , module GHC.Exts
     , module GHC.Generics
-    , module GHC.IsList
     , module Prelude
     , module System.Exit
     , module System.IO
@@ -61,8 +61,8 @@ import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
 import Debug.Trace
+import GHC.Exts (IsList (..), fromList)
 import GHC.Generics (Generic)
-import GHC.IsList
 import Prettyprinter (Pretty (pretty), annotate)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO (BufferMode (NoBuffering), IO, hSetBuffering, stdout)

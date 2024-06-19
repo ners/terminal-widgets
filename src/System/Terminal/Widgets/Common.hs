@@ -8,6 +8,7 @@ import Control.Applicative
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Monoid hiding (Alt)
 import Prettyprinter
+import Prettyprinter.Extra (countLinesS)
 import System.Terminal.Render qualified as Render
 import Prelude
 
@@ -27,13 +28,19 @@ class Widget w where
     lineCount :: w -> Int
     lineCount =
         (1 +)
-            . Render.countLines
+            . countLinesS
             . layoutPretty defaultLayoutOptions
             . toDoc @_ @(TerminalT LocalTerminal IO)
-    render :: forall m. (MonadTerminal m) => Maybe w -> w -> m ()
+    render
+        :: forall m. (MonadTerminal m) => Maybe w -> w -> m ()
     render = defaultRender
 
-defaultRender :: forall w m. (Widget w, MonadTerminal m) => Maybe w -> w -> m ()
+defaultRender
+    :: forall w m
+     . (Widget w, MonadTerminal m)
+    => Maybe w
+    -> w
+    -> m ()
 defaultRender maybeOld new = Render.render (r <$> maybeOld) (r new)
   where
     r :: w -> (Position, Doc (Attribute m))
@@ -87,7 +94,8 @@ runWidget' setup preRender postRender cleanup w = do
 runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
 runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
 
-runWidget :: forall m w. (MonadTerminal m, Widget w) => w -> m w
+runWidget
+    :: forall m w. (MonadTerminal m, Widget w) => w -> m w
 runWidget = runWidget' setup preRender postRender cleanup
   where
     setup :: w -> m ()

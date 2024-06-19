@@ -5,8 +5,10 @@ module System.Terminal.Render where
 
 import Control.Monad.State.Strict qualified as State
 import Data.Text qualified as Text
-import Prettyprinter
-import Prelude hiding (putDoc, putSimpleDocStream)
+import Prettyprinter (Doc, SimpleDocStream (..))
+import Prettyprinter qualified
+import Prettyprinter.Extra
+import Prelude hiding (putDoc, putLn, putSimpleDocStream)
 import Prelude qualified
 
 deriving stock instance Generic Position
@@ -18,34 +20,78 @@ type MonadCursor t m m' =
     , MonadState Position m
     )
 
+layoutPretty :: Doc ann -> SimpleDocStream ann
+layoutPretty = Prettyprinter.layoutPretty Prettyprinter.defaultLayoutOptions
+
+type AttributeStack m = [Attribute m]
+
+attributeStackToDocStream
+    :: AttributeStack m
+    -> SimpleDocStream (Attribute m)
+    -> SimpleDocStream (Attribute m)
+attributeStackToDocStream = foldr (\ann acc -> SAnnPush ann . acc) id
+
 render
-    :: (MonadTerminal m)
+    :: forall m
+     . (MonadTerminal m)
     => Maybe (Position, Doc (Attribute m))
     -> (Position, Doc (Attribute m))
     -> m ()
 render (fromMaybe (Position{row = 0, col = 0}, "") -> (oldPos, oldDoc)) (newPos, newDoc) = do
     flip evalStateT oldPos do
-        go (toStream oldDoc) (toStream newDoc)
+        goLine 0 (layoutPretty oldDoc, mempty) (layoutPretty newDoc, mempty)
         moveToPosition newPos
   where
-    toStream :: Doc ann -> SimpleDocStream ann
-    toStream = layoutPretty defaultLayoutOptions
-    final :: SimpleDocStream ann -> Bool
-    final SFail = True
-    final SEmpty = True
-    final _ = False
-    go
-        :: (MonadCursor t m m')
-        => SimpleDocStream (Attribute m')
-        -> SimpleDocStream (Attribute m')
-        -> m ()
-    go (final -> True) (final -> True) = pure ()
-    go (final -> True) new = putSimpleDocStream new
-    go _ (final -> True) = lift $ eraseInDisplay EraseForward
-    go old new = do
-        moveToPosition $ Position{row = 0, col = 0}
+    goLine
+        :: (MonadCursor t m' m)
+        => Int
+        -> (SimpleDocStream (Attribute m), AttributeStack m)
+        -> (SimpleDocStream (Attribute m), AttributeStack m)
+        -> m' ()
+    goLine _ (nullS -> True, _) (nullS -> True, _) = do
+        pure ()
+    goLine _ (nullS -> True, _) (newStream, _) = do
+        putSimpleDocStream newStream
+    goLine _ _ (nullS -> True, _) = do
         lift $ eraseInDisplay EraseForward
-        putSimpleDocStream new
+    goLine line (oldStream, oldStack) (newStream, newStack) = do
+        let (oldLine, oldNewLine, oldRest) = takeLine oldStream
+            (newLine, newNewLine, newRest) = takeLine newStream
+            (commonPrefix, oldSuffix, newSuffix) =
+                if oldStack == newStack
+                    then findCommonPrefix oldLine newLine
+                    else (SEmpty, oldLine, newLine)
+            commonPrefixLen = lineLen commonPrefix
+            oldSuffixLen = lineLen oldSuffix
+            newSuffixLen = lineLen newSuffix
+            oldStackAfterPrefix = applyAnnotations commonPrefix oldStack
+            newStackAfterPrefix = applyAnnotations commonPrefix newStack
+        if nullS oldSuffix && nullS newSuffix
+            then do
+                when (newNewLine /= SEmpty && oldNewLine == SEmpty) putLn
+                goLine (line + 1) (oldRest, oldStackAfterPrefix) (newRest, newStackAfterPrefix)
+            else do
+                moveToPosition Position{row = line, col = commonPrefixLen}
+                -- not sure if newStackAfterPrefix is the right thing to use here ...
+                unless (nullS newSuffix)
+                    . putSimpleDocStream
+                    . attributeStackToDocStream newStackAfterPrefix
+                    $ newSuffix
+                when (oldSuffixLen > newSuffixLen) . lift $ eraseInLine EraseForward
+                putSimpleDocStream newNewLine
+                when (newRest /= SEmpty) do
+                    let oldStackAfterSuffix = applyAnnotations oldSuffix oldStackAfterPrefix
+                        newStackAfterSuffix = applyAnnotations newSuffix newStackAfterPrefix
+                    goLine (line + 1) (oldRest, oldStackAfterSuffix) (newRest, newStackAfterSuffix)
+    applyAnnotations
+        :: SimpleDocStream (Attribute m)
+        -> AttributeStack m
+        -> AttributeStack m
+    applyAnnotations SFail = id
+    applyAnnotations SEmpty = id
+    applyAnnotations (SAnnPush ann rest) = applyAnnotations rest . (ann :)
+    applyAnnotations (SAnnPop rest) = applyAnnotations rest . drop 1
+    applyAnnotations stream = applyAnnotations (stream ^. tailS)
 
 moveToRow :: (MonadCursor t m m') => Int -> m ()
 moveToRow newRow = do
@@ -77,7 +123,7 @@ putSimpleDocStream s = do
             then #row %~ (+ numLines) >>> #col .~ len
             else #col %~ (+ len)
   where
-    numLines = countLines s
+    numLines = countLinesS s
     len = lastLineLen s
 
 putDoc
@@ -85,42 +131,37 @@ putDoc
      . (MonadCursor t m m')
     => Doc (Attribute m')
     -> m ()
-putDoc = putSimpleDocStream . layoutPretty defaultLayoutOptions
+putDoc = putSimpleDocStream . layoutPretty
 
-renderLine :: (MonadScreen m) => Text -> Text -> m ()
-renderLine oldText newText =
-    unless (oldText == newText) do
-        let (Text.length -> prefixLen, Text.length -> oldSuffixLen, newSuffix) =
-                commonPrefixes oldText newText
-        setCursorColumn prefixLen
-        putText newSuffix
-        when (oldSuffixLen > Text.length newSuffix) $ eraseInLine EraseForward
+putLn :: forall t m m'. (MonadCursor t m m') => m ()
+putLn = do
+    lift Prelude.putLn
+    State.modify $ #row %~ (+ 1) >>> #col .~ 0
 
--- | Skip the first token in the stream and return the rest of the stream
-stail :: SimpleDocStream ann -> SimpleDocStream ann
-stail SFail = SFail
-stail SEmpty = SEmpty
-stail (SChar _ rest) = rest
-stail (SText _ _ rest) = rest
-stail (SLine _ rest) = rest
-stail (SAnnPush _ rest) = rest
-stail (SAnnPop rest) = rest
+takeLine
+    :: SimpleDocStream ann
+    -> (SimpleDocStream ann, SimpleDocStream ann, SimpleDocStream ann)
+takeLine SFail = (SFail, SEmpty, SEmpty)
+takeLine SEmpty = (SEmpty, SEmpty, SEmpty)
+takeLine (SLine len rest) = (SEmpty, SLine 0 SEmpty, rest')
+  where
+    rest' =
+        if len > 0
+            then SText len (Text.replicate len " ") rest
+            else rest
+takeLine s = (s', newLine, rest)
+  where
+    (line, newLine, rest) = takeLine (s ^. tailS)
+    s' = s & tailS .~ line
 
--- | Return the number of lines in the stream
-countLines :: SimpleDocStream ann -> Int
-countLines SFail = 0
-countLines SEmpty = 0
-countLines (SLine _ rest) = 1 + countLines rest
-countLines (stail -> rest) = 0 + countLines rest
-
-tokenLen :: SimpleDocStream ann -> Int
-tokenLen SFail = 0
-tokenLen SEmpty = 0
-tokenLen (SChar _ _) = 1
-tokenLen (SText len _ _) = len
-tokenLen (SLine len _) = len
-tokenLen (SAnnPush _ _) = 0
-tokenLen (SAnnPop _) = 0
+lineLen :: forall ann. SimpleDocStream ann -> Int
+lineLen = go 0
+  where
+    go :: Int -> SimpleDocStream ann -> Int
+    go n SFail = n
+    go n SEmpty = n
+    go n SLine{} = n
+    go n s = go (n + tokenLenS s) (s ^. tailS)
 
 lastLineLen :: forall ann. SimpleDocStream ann -> Int
 lastLineLen = go 0
@@ -129,4 +170,33 @@ lastLineLen = go 0
     go n SFail = n
     go n SEmpty = n
     go _ (SLine len rest) = go len rest
-    go n s = go (n + tokenLen s) (stail s)
+    go n s = go (n + tokenLenS s) (s ^. tailS)
+
+type DifferenceStream ann = SimpleDocStream ann -> SimpleDocStream ann
+
+textStream :: Text -> SimpleDocStream ann -> SimpleDocStream ann
+textStream "" = id
+textStream t = SText (Text.length t) t
+
+findCommonPrefix
+    :: forall ann
+     . (Eq ann)
+    => SimpleDocStream ann
+    -> SimpleDocStream ann
+    -> (SimpleDocStream ann, SimpleDocStream ann, SimpleDocStream ann)
+findCommonPrefix a b = let (acc, a', b') = go id a b in (acc SEmpty, a', b')
+  where
+    go
+        :: DifferenceStream ann
+        -> SimpleDocStream ann
+        -> SimpleDocStream ann
+        -> (DifferenceStream ann, SimpleDocStream ann, SimpleDocStream ann)
+    go acc (SChar c rest1) (SChar ((== c) -> True) rest2) = go (acc . SChar c) rest1 rest2
+    go acc (SText len1 t1 rest1) (SText len2 t2 rest2)
+        | len1 == len2, t1 == t2 = go (acc . SText len1 t1) rest1 rest2
+        | Just (common, s1, s2) <- Text.commonPrefixes t1 t2 =
+            go (acc . textStream common) (textStream s1 rest1) (textStream s2 rest2)
+    go acc (SLine len rest1) (SLine ((== len) -> True) rest2) = go (acc . SLine len) rest1 rest2
+    go acc (SAnnPush ann rest1) (SAnnPush ((== ann) -> True) rest2) = go (acc . SAnnPush ann) rest1 rest2
+    go acc (SAnnPop rest1) (SAnnPop rest2) = go (acc . SAnnPop) rest1 rest2
+    go acc a b = (acc, a, b)
