@@ -3,11 +3,11 @@
 module System.Terminal.Widgets.TextInputSpec where
 
 import Data.Text qualified as Text
-import Prelude
 import System.Terminal
 import System.Terminal.Internal qualified as Terminal
 import System.Terminal.Widgets.Common qualified as Widget
 import System.Terminal.Widgets.TextInput
+import Prelude
 
 deriving stock instance Eq TextInput
 
