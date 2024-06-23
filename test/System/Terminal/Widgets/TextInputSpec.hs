@@ -4,7 +4,6 @@ module System.Terminal.Widgets.TextInputSpec where
 
 import Data.Text qualified as Text
 import System.Terminal
-import System.Terminal.Internal qualified as Terminal
 import System.Terminal.Widgets.Common qualified as Widget
 import System.Terminal.Widgets.TextInput
 import Prelude
@@ -40,7 +39,7 @@ spec = do
                 assertCursor (`shouldBe` expectedCursor)
                 let expectedLines = prompt <> charText : replicate i (promptPrefix <> charText)
                 assertContent (`shouldSatisfy` linesMatch expectedLines)
-                assertCursorCommands (`shouldBe` [Terminal.SetCursorColumn 0])
+                assertCursorCommands (`shouldBe` [])
 
             testRandomMovements
 
