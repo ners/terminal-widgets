@@ -28,9 +28,9 @@ instance Widget TextInput where
     handleEvent (KeyEvent BackspaceKey []) = #value %~ RopeZipper.deleteBefore
     handleEvent (KeyEvent DeleteKey []) = #value %~ RopeZipper.deleteAfter
     handleEvent (KeyEvent (CharKey k) []) = #value %~ RopeZipper.insertText (Text.singleton k)
+    handleEvent (KeyEvent EnterKey []) = filtered (.multiline) . #value %~ RopeZipper.insertText "\n"
     handleEvent (KeyEvent (ArrowKey Leftwards) []) = #value %~ RopeZipper.moveBackward
     handleEvent (KeyEvent (ArrowKey Rightwards) []) = #value %~ RopeZipper.moveForward
-    handleEvent (KeyEvent EnterKey []) = filtered (.multiline) . #value %~ RopeZipper.insertText "\n"
     handleEvent (KeyEvent (ArrowKey Upwards) []) = filtered (.multiline) . #value %~ RopeZipper.moveUp
     handleEvent (KeyEvent (ArrowKey Downwards) []) = filtered (.multiline) . #value %~ RopeZipper.moveDown
     handleEvent _ = id

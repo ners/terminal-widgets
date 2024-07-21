@@ -84,6 +84,7 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
                 pretty . Text.unlines $
                     RopeZipper.toText s.searchValue : (mkOption <$> s.visibleOptions)
          in prompt <> options
+    lineCount s = 1 + length s.visibleOptions
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""

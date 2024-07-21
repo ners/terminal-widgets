@@ -27,8 +27,7 @@ class Widget w where
     toDoc = ishow
     lineCount :: w -> Int
     lineCount =
-        (1 +)
-            . countLinesS
+        countLinesS
             . layoutPretty defaultLayoutOptions
             . toDoc @_ @(TerminalT LocalTerminal IO)
     render

@@ -47,6 +47,7 @@ instance (Show a) => Widget (Select a) where
                     , s.optionText value
                     ]
          in pretty $ Text.unlines $ s.prompt : (mkOption <$> s.options)
+    lineCount s = 1 + length s.options
 
 moveUp :: Select a -> Select a
 moveUp = filtered (\s -> s.cursorOption > 0) . #cursorOption %~ pred
