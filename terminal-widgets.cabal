@@ -51,7 +51,6 @@ common common
         ViewPatterns
     build-depends:
         base >= 4.16 && < 5,
-        extra,
         generic-lens,
         terminal,
         text,
@@ -73,6 +72,7 @@ library
         Prettyprinter.Extra,
     build-depends:
         exceptions,
+        extra,
         fuzzy,
         mtl,
         prettyprinter,

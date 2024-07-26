@@ -18,13 +18,16 @@ data TextInput = TextInput
     }
     deriving stock (Generic)
 
+withPromptLength :: Int -> Iso' Position Position
+withPromptLength len = iso (#col %~ (+) len) (#col %~ subtract len)
+
 instance Widget TextInput where
     cursor = lens getter setter
       where
         getter :: TextInput -> Position
-        getter TextInput{..} = value ^. #cursor & #col %~ (+ Text.length prompt)
+        getter TextInput{..} = value ^. #cursor . withPromptLength (Text.length prompt)
         setter :: TextInput -> Position -> TextInput
-        setter t p = t & #value . #cursor .~ (p & #col %~ subtract (Text.length t.prompt))
+        setter t p = t & #value . #cursor . withPromptLength (Text.length t.prompt) .~ p
     handleEvent (KeyEvent BackspaceKey []) = #value %~ RopeZipper.deleteBefore
     handleEvent (KeyEvent DeleteKey []) = #value %~ RopeZipper.deleteAfter
     handleEvent (KeyEvent (CharKey k) []) = #value %~ RopeZipper.insertText (Text.singleton k)

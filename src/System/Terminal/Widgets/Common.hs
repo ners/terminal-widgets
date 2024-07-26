@@ -31,7 +31,11 @@ class Widget w where
             . layoutPretty defaultLayoutOptions
             . toDoc @_ @(TerminalT LocalTerminal IO)
     render
-        :: forall m. (MonadTerminal m) => Maybe w -> w -> m ()
+        :: forall m
+         . (MonadTerminal m)
+        => Maybe w
+        -> w
+        -> m ()
     render = defaultRender
 
 defaultRender
@@ -94,7 +98,10 @@ runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
 runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
 
 runWidget
-    :: forall m w. (MonadTerminal m, Widget w) => w -> m w
+    :: forall m w
+     . (MonadTerminal m, Widget w)
+    => w
+    -> m w
 runWidget = runWidget' setup preRender postRender cleanup
   where
     setup :: w -> m ()
