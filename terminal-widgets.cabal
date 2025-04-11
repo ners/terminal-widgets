@@ -51,7 +51,6 @@ common common
         ViewPatterns
     build-depends:
         base >= 4.16 && < 5,
-        generic-lens,
         terminal,
         text,
         text-rope-zipper,
@@ -71,6 +70,7 @@ library
         Prelude,
         Prettyprinter.Extra,
     build-depends:
+        generic-lens,
         exceptions,
         extra,
         fuzzy,
@@ -86,6 +86,7 @@ test-suite spec
     build-depends:
         HUnit,
         QuickCheck,
+        generic-lens,
         hspec,
         terminal-widgets,
         unliftio,

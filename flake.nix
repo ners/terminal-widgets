@@ -19,28 +19,41 @@
   outputs = inputs:
     with builtins;
     let
+      pname = "terminal-widgets";
+
       inherit (inputs.nixpkgs) lib;
       foreach = xs: f: with lib; foldr recursiveUpdate { } (
         if isList xs then map f xs
         else if isAttrs xs then mapAttrsToList f xs
         else throw "foreach: expected list or attrset but got ${typeOf xs}"
       );
-      hsSrc = root: with lib.fileset; toSource {
+      sourceFilter = root: with lib.fileset; toSource {
         inherit root;
-        fileset = fileFilter (file: any file.hasExt [ "cabal" "hs" "md" ] || file.type == "directory") ./.;
+        fileset = fileFilter (file: any file.hasExt [ "cabal" "hs" "md" ]) root;
       };
-      pname = "terminal-widgets";
-      src = hsSrc ./.;
-      ghcs = [ "ghc92" "ghc94" "ghc96" "ghc98" ];
+      ghcsFor = pkgs: with lib; foldlAttrs
+        (acc: name: hp:
+          let
+            version = getVersion hp.ghc;
+            majorMinor = versions.majorMinor version;
+            ghcName = "ghc${replaceStrings ["."] [""] majorMinor}";
+          in
+          if hp ? ghc && ! acc ? ${ghcName} && versionAtLeast version "9.2" && versionOlder version "9.12"
+          then acc // { ${ghcName} = hp; }
+          else acc
+        )
+        { }
+        pkgs.haskell.packages;
+      hpsFor = pkgs: { default = pkgs.haskellPackages; } // ghcsFor pkgs;
       overlay = lib.composeManyExtensions [
         inputs.text-rope-zipper.overlays.default
         (final: prev: {
           haskell = prev.haskell // {
             packageOverrides = lib.composeManyExtensions [
               prev.haskell.packageOverrides
-              (hfinal: hprev: {
+              (hfinal: hprev: with prev.haskell.lib.compose; {
                 terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
-                "${pname}" = hfinal.callCabal2nix pname src { };
+                ${pname} = hfinal.callCabal2nix pname (sourceFilter ./.) { };
               })
             ];
           };
@@ -51,38 +64,37 @@
       (system: pkgs':
         let
           pkgs = pkgs'.extend overlay;
-          hps =
-            lib.filterAttrs (ghc: _: elem ghc ghcs) pkgs.haskell.packages
-            // { default = pkgs.haskellPackages; };
-          allPackages =
-            pkgs.symlinkJoin {
-              inherit name;
-              paths = map (hp: hp.${pname}) (attrValues hps);
-            };
+          hps = hpsFor pkgs;
+          bins = pkgs.buildEnv {
+            name = "${pname}-bins";
+            paths = [ hps.default.${pname} ];
+            pathsToLink = [ "/bin" ];
+          };
+          libs = pkgs.buildEnv {
+            name = "${pname}-libs";
+            paths = map (hp: hp.${pname}) (attrValues hps);
+            pathsToLink = [ "/lib" ];
+          };
           docs = pkgs.haskell.lib.documentationTarball hps.default.${pname};
-          sdist = hps.default.cabalSdist { name = "${pname}.tar.gz"; inherit src; };
-          inherit (hps.default.${pname}) name;
-          default = pkgs.runCommand name { } ''
-            mkdir $out
-            cd $out
-            mkdir docs sdist
-            ln -s ${allPackages} ${name}
-            ln -s ${docs}/*.tar.gz docs/
-            ln -s ${sdist} sdist/${name}.tar.gz
-          '';
+          sdist = pkgs.haskell.lib.sdistTarball hps.default.${pname};
+          docsAndSdist = pkgs.linkFarm "${pname}-docsAndSdist" { inherit docs sdist; };
         in
         {
           formatter.${system} = pkgs.nixpkgs-fmt;
           legacyPackages.${system} = pkgs;
-          packages.${system} = { inherit default; };
+          packages.${system}.default = pkgs.symlinkJoin {
+            name = "${pname}-all";
+            paths = [ bins libs docsAndSdist ];
+            inherit (hps.default.syntax) meta;
+          };
           devShells.${system} =
             foreach hps (ghcName: hp: {
               ${ghcName} = hp.shellFor {
-                packages = ps: [ ps.${pname} ];
-                nativeBuildInputs = with hp; [
+                packages = ps: [ hp.${pname} ];
+                nativeBuildInputs = [
                   pkgs'.haskellPackages.cabal-install
-                  pkgs'.haskellPackages.fourmolu
-                  haskell-language-server
+                  hp.fourmolu
+                  hp.haskell-language-server
                 ];
               };
             });
