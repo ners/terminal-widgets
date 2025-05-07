@@ -22,11 +22,12 @@ common common
     ghc-options:
         -Weverything
         -Wno-unsafe
-        -Wno-missing-safe-haskell-mode
+        -Wno-all-missed-specialisations
         -Wno-missing-export-lists
         -Wno-missing-import-lists
         -Wno-missing-kind-signatures
-        -Wno-all-missed-specialisations
+        -Wno-missing-role-annotations
+        -Wno-missing-safe-haskell-mode
     default-extensions:
         ApplicativeDo
         BlockArguments
@@ -51,7 +52,6 @@ common common
         ViewPatterns
     build-depends:
         base >= 4.16 && < 5,
-        generic-lens,
         terminal,
         text,
         text-rope-zipper,
@@ -71,6 +71,7 @@ library
         Prelude,
         Prettyprinter.Extra,
     build-depends:
+        generic-lens,
         exceptions,
         extra,
         fuzzy,
@@ -86,6 +87,7 @@ test-suite spec
     build-depends:
         HUnit,
         QuickCheck,
+        generic-lens,
         hspec,
         terminal-widgets,
         unliftio,
