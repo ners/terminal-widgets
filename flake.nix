@@ -94,6 +94,7 @@
                 nativeBuildInputs = [
                   pkgs'.haskellPackages.cabal-install
                   hp.fourmolu
+                ] ++ lib.optionals (lib.versionAtLeast hp.ghc.version "9.4") [
                   hp.haskell-language-server
                 ];
               };

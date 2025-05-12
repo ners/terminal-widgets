@@ -72,19 +72,20 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
     toDoc s =
         let prompt = fullPrompt s pretty (annotate inverted . pretty)
             mkOption a =
-                mconcat
-                    [ " "
+                Text.intercalate
+                    " "
+                    [ ""
                     , Text.intercalate
                         (if a `elem` s.selections then "*" else " ")
                         (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
-                    , " "
                     , s.optionText a
                     ]
             options =
-                pretty . Text.unlines $
-                    RopeZipper.toText s.searchValue : (mkOption <$> s.visibleOptions)
+                pretty . Text.intercalate "\n" $
+                    RopeZipper.toText s.searchValue
+                        : (mkOption <$> take s.maxVisible s.visibleOptions)
          in prompt <> options
-    lineCount s = 1 + length s.visibleOptions
+    lineCount s = 1 + min s.maxVisible (length s.visibleOptions)
 
 clearSearchValue :: SearchSelect a -> SearchSelect a
 clearSearchValue = #searchValue .~ ""
@@ -95,7 +96,7 @@ moveUp s = s & #cursorRow .~ max 0 (s.cursorRow - 1)
 moveDown :: SearchSelect a -> SearchSelect a
 moveDown s = s & #cursorRow .~ min numVisible (succ s.cursorRow)
   where
-    numVisible = length s.visibleOptions
+    numVisible = min s.maxVisible $ length s.visibleOptions
 
 current :: Lens' (SearchSelect a) (Maybe a)
 current = lens getter setter

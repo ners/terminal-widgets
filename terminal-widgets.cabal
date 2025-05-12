@@ -52,10 +52,7 @@ common common
         ViewPatterns
     build-depends:
         base >= 4.16 && < 5,
-        terminal,
         text,
-        text-rope-zipper,
-        transformers,
 
 library
     import:           common
@@ -71,12 +68,15 @@ library
         Prelude,
         Prettyprinter.Extra,
     build-depends:
-        generic-lens,
         exceptions,
         extra,
         fuzzy,
+        generic-lens,
         mtl,
         prettyprinter,
+        terminal,
+        text-rope-zipper,
+        transformers,
 
 test-suite spec
     import:           common
@@ -89,7 +89,10 @@ test-suite spec
         QuickCheck,
         generic-lens,
         hspec,
+        terminal,
         terminal-widgets,
+        text-rope-zipper,
+        transformers,
         unliftio,
     other-modules:
         Prelude,
@@ -104,3 +107,5 @@ executable kitchen-sink
     hs-source-dirs: app
     build-depends:
         terminal-widgets,
+    other-modules:
+        Prelude,

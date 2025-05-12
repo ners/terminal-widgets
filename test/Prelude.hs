@@ -28,7 +28,6 @@ module Prelude
 where
 
 import Control.Arrow
-import Test.HUnit.Base
 import Control.Monad
 import Control.Monad.Trans.Reader
 import Data.Foldable (for_, toList)
@@ -51,6 +50,7 @@ import Debug.Trace
 import System.Terminal
 import System.Terminal.Internal
 import System.Terminal.Widgets.Common
+import Test.HUnit.Base
 import Test.Hspec
 import Test.Hspec.QuickCheck
 import Test.QuickCheck
@@ -62,7 +62,7 @@ import "base" Prelude hiding (unzip)
 
 infixl 4 <$$>
 
-(<$$>) :: Functor f1 => Functor f2 => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
+(<$$>) :: (Functor f1, Functor f2) => (a -> b) -> f1 (f2 a) -> f1 (f2 b)
 (<$$>) = fmap . fmap
 
 ishow :: (Show a, IsString s) => a -> s
@@ -147,19 +147,28 @@ data TestState w = TestTerminal
 getCursor :: (MonadIO m) => ReaderT (TestState w) m Position
 getCursor = readTVarIO =<< asks (.terminal.terminal.virtualCursor)
 
-assertCursor :: (HasCallStack, MonadIO m) => (HasCallStack => Position -> Expectation) -> ReaderT (TestState w) m ()
+assertCursor
+    :: (HasCallStack, MonadIO m)
+    => ((HasCallStack) => Position -> Expectation)
+    -> ReaderT (TestState w) m ()
 assertCursor expectation = liftIO . expectation =<< getCursor
 
 getCursorCommands :: (MonadIO m) => ReaderT (TestState w) m [Command]
 getCursorCommands = readTVarIO =<< asks (.terminal.cursorCommands)
 
-assertCursorCommands :: (HasCallStack, MonadIO m) => (HasCallStack => [Command] -> Expectation) -> ReaderT (TestState w) m ()
+assertCursorCommands
+    :: (HasCallStack, MonadIO m)
+    => ((HasCallStack) => [Command] -> Expectation)
+    -> ReaderT (TestState w) m ()
 assertCursorCommands expectation = liftIO . expectation =<< getCursorCommands
 
 getContent :: (MonadIO m) => ReaderT (TestState w) m [Text]
 getContent = fromString <$$> (readTVarIO =<< asks (.terminal.terminal.virtualWindow))
 
-assertContent :: (HasCallStack, MonadIO m) => (HasCallStack => [Text] -> Expectation) -> ReaderT (TestState w) m ()
+assertContent
+    :: (HasCallStack, MonadIO m)
+    => ((HasCallStack) => [Text] -> Expectation)
+    -> ReaderT (TestState w) m ()
 assertContent expectation = liftIO . expectation =<< getContent
 
 getCounter :: (MonadIO m) => ReaderT (TestState w) m Int
@@ -170,13 +179,19 @@ resetCounter = do
     atomically . flip writeTVar 0 =<< asks (.terminal.commandCounter)
     atomically . flip writeTVar [] =<< asks (.terminal.cursorCommands)
 
-assertCounter :: (HasCallStack, MonadIO m) => (HasCallStack => Int -> Expectation) -> ReaderT (TestState w) m ()
+assertCounter
+    :: (HasCallStack, MonadIO m)
+    => ((HasCallStack) => Int -> Expectation)
+    -> ReaderT (TestState w) m ()
 assertCounter expectation = liftIO . expectation =<< getCounter
 
 getWidget :: (MonadIO m) => ReaderT (TestState w) m w
 getWidget = readTVarIO =<< asks (.widget)
 
-assertWidget :: (HasCallStack, MonadIO m) => (HasCallStack => w -> Expectation) -> ReaderT (TestState w) m ()
+assertWidget
+    :: (HasCallStack, MonadIO m)
+    => ((HasCallStack) => w -> Expectation)
+    -> ReaderT (TestState w) m ()
 assertWidget expectation = liftIO . expectation =<< getWidget
 
 runTestWidget
@@ -206,16 +221,24 @@ runTestWidget w runEvents = do
     withVirtualTerminal settings $ \terminal -> do
         let countingTerminal = CountingTerminal{..}
         let testTerminal = TestTerminal{terminal = countingTerminal, ..}
-        concurrently (atomically (takeTMVar done) >> runReaderT (runEvents <* sendSubmitEvent) testTerminal) do
-            let setup _ = pure ()
-                cleanup _ _ = pure ()
-                preRender _ _ = pure ()
-                postRender _ w' = flush >> updateWidget w'
-                updateWidget w' = atomically $ putTMVar done () >> writeTVar widget w'
-            flip runTerminalT countingTerminal do
-                w' <- runWidget' setup preRender postRender cleanup w
-                updateWidget w'
-                pure w'
+        concurrently
+            do
+                atomically (takeTMVar done)
+                runReaderT (runEvents <* sendSubmitEvent) testTerminal
+            do
+                let setup _ = pure ()
+                    cleanup _ _ = pure ()
+                    render' maybeOld new = do
+                        render maybeOld new
+                        flush
+                        updateWidget new
+                    updateWidget w' = atomically do
+                        putTMVar done ()
+                        writeTVar widget w'
+                flip runTerminalT countingTerminal do
+                    w' <- runWidget' setup render' cleanup w
+                    updateWidget w'
+                    pure w'
 
 sendEvent :: (MonadIO m) => EventOrInterrupt -> ReaderT (TestState w) m ()
 sendEvent e = do
@@ -269,22 +292,32 @@ testRandomMovements = do
     assertCounter (`shouldBeLTE` (w * 4))
     assertCursorCommands $ (`shouldBeLTE` w) . length
 
-data BinaryOp a = BinaryOp {
-    op :: a -> a -> Bool,
-    symbol :: String
-}
+data BinaryOp a = BinaryOp
+    { op :: a -> a -> Bool
+    , symbol :: String
+    }
 
 assertBinaryOp
-  :: (HasCallStack, Show a)
-  => String -- ^ The message prefix
-  -> BinaryOp a
-  -> a      -- ^ The expected value
-  -> a      -- ^ The actual value
-  -> IO ()
+    :: (HasCallStack, Show a)
+    => String
+    -- ^ The message prefix
+    -> BinaryOp a
+    -> a
+    -- ^ The expected value
+    -> a
+    -- ^ The actual value
+    -> IO ()
 assertBinaryOp preface BinaryOp{..} a b =
-  unless (op a b) (assertFailure msg)
- where msg = (if null preface then "" else preface ++ "\n") ++
-             "expected " ++ show a ++ " " ++ symbol ++ " " ++ show b
+    unless (op a b) (assertFailure msg)
+  where
+    msg =
+        (if null preface then "" else preface ++ "\n")
+            ++ "expected "
+            ++ show a
+            ++ " "
+            ++ symbol
+            ++ " "
+            ++ show b
 
 shouldBeLT :: (HasCallStack, Ord a, Show a) => a -> a -> Expectation
 shouldBeLT = assertBinaryOp "" (BinaryOp (<) "<")

@@ -2,17 +2,12 @@
 
 module Main where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.String
 import Data.Text qualified as Text
-import System.Terminal
 import System.Terminal.Widgets.Buttons
-import System.Terminal.Widgets.Common (Widget)
-import System.Terminal.Widgets.Common qualified as Terminal
+import System.Terminal.Widgets.Common (runWidgetIO)
 import System.Terminal.Widgets.SearchSelect
 import System.Terminal.Widgets.Select
 import System.Terminal.Widgets.TextInput
-import Text.Show.Functions ()
 import Prelude
 
 deriving stock instance Show TextInput
@@ -25,16 +20,10 @@ deriving stock instance (Show a) => Show (Select a)
 
 deriving stock instance (Show a) => Show (SearchSelect a)
 
-ishow :: (Show a, IsString s) => a -> s
-ishow = fromString . show
-
-runWidget :: (Widget w) => w -> IO w
-runWidget = liftIO . withTerminal . runTerminalT . Terminal.runWidget
-
 main :: IO ()
 main = do
     print
-        =<< runWidget
+        =<< runWidgetIO
             TextInput
                 { prompt = "Single line text: "
                 , multiline = False
@@ -43,7 +32,7 @@ main = do
                 , valueTransform = id
                 }
     print
-        =<< runWidget
+        =<< runWidgetIO
             TextInput
                 { prompt = "Single line password: "
                 , multiline = False
@@ -52,7 +41,7 @@ main = do
                 , valueTransform = Text.map (const '*')
                 }
     print
-        =<< runWidget
+        =<< runWidgetIO
             TextInput
                 { prompt = "Multi line text: "
                 , multiline = True
@@ -61,39 +50,57 @@ main = do
                 , valueTransform = id
                 }
     print
-        =<< runWidget
+        =<< runWidgetIO
             Buttons
                 { prompt = "Buttons: "
                 , buttons = [("Button 1", Just '1'), ("Button 2", Just '2')]
                 , selected = 0
                 }
     print
-        =<< runWidget @(Select Int)
+        =<< runWidgetIO
             Select
                 { prompt = "Single select: "
-                , options = [SelectOption{value, checked = False} | value <- [1 .. 5]]
+                , options = [SelectOption{value, checked = False} | value <- [1 :: Int .. 5]]
                 , optionText = ishow
                 , minSelect = 1
                 , maxSelect = 1
                 , cursorOption = 0
                 }
     print
-        =<< runWidget @(Select Int)
+        =<< runWidgetIO
             Select
                 { prompt = "Multi select: "
-                , options = [SelectOption{value, checked = False} | value <- [1 .. 5]]
+                , options = [SelectOption{value, checked = False} | value <- [1 :: Int .. 5]]
                 , optionText = ishow
                 , minSelect = 0
                 , maxSelect = 3
                 , cursorOption = 0
                 }
+    let options :: [Int]
+        options = [1000 .. 2000]
     print
-        =<< runWidget @(SearchSelect Int)
+        =<< runWidgetIO
             SearchSelect
-                { prompt = "Search select: "
+                { prompt = "Search select (single): "
                 , searchValue = ""
-                , options = [1000 .. 2000]
-                , visibleOptions = []
+                , options = options
+                , visibleOptions = options
+                , selections = [1234]
+                , optionText = ishow
+                , minSelect = 1
+                , maxSelect = 1
+                , minSearchLength = 1
+                , maxVisible = 5
+                , cursorRow = 0
+                , newOption = const Nothing
+                }
+    print
+        =<< runWidgetIO
+            SearchSelect
+                { prompt = "Search select (multi): "
+                , searchValue = ""
+                , options = options
+                , visibleOptions = options
                 , selections = [1234]
                 , optionText = ishow
                 , minSelect = 1

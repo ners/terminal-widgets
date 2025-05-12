@@ -71,18 +71,15 @@ runWidget'
     => (w -> m ())
     -> (Maybe w -> w -> m ())
     -> (Maybe w -> w -> m ())
-    -> (Maybe w -> w -> m ())
     -> w
     -> m w
-runWidget' setup preRender postRender cleanup w = do
+runWidget' setup render' cleanup w = do
     setup w
     go Nothing w
   where
     go :: Maybe w -> w -> m w
     go maybeOld current = do
-        preRender maybeOld current
-        render maybeOld current
-        postRender maybeOld current
+        render' maybeOld current
         awaitEvent >>= \case
             Left Interrupt -> do
                 cleanup maybeOld current
@@ -94,24 +91,23 @@ runWidget' setup preRender postRender cleanup w = do
                 let new = handleEvent e current
                 go (Just current) new
 
-runWidgetIO :: forall m w. (MonadIO m, Widget w) => w -> m w
-runWidgetIO = liftIO . withTerminal . runTerminalT . runWidget
-
 runWidget
     :: forall m w
      . (MonadTerminal m, Widget w)
     => w
     -> m w
-runWidget = runWidget' setup preRender postRender cleanup
+runWidget = runWidget' setup render' cleanup
   where
     setup :: w -> m ()
     setup _ = pure ()
-    preRender, postRender, cleanup :: Maybe w -> w -> m ()
-    preRender _ _ = pure ()
-    postRender _ _ = flush
+    render', cleanup :: Maybe w -> w -> m ()
+    render' maybeOld new = render maybeOld new >> flush
     cleanup _ w = do
         let dy = lineCount w - (w ^. cursor . #row) - 1
         when (dy > 0) $ moveCursorDown dy
         putLn
         resetAttributes
         showCursor
+
+runWidgetIO :: forall m w. (MonadIO m, MonadMask m, Widget w) => w -> m w
+runWidgetIO = withTerminal . runTerminalT . runWidget
