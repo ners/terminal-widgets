@@ -32,34 +32,43 @@
         fileset = fileFilter (file: any file.hasExt [ "cabal" "hs" "md" ]) root;
       };
       ghcsFor = pkgs: with lib; foldlAttrs
-        (acc: name: hp:
+        (acc: name: hp':
           let
-            version = getVersion hp.ghc;
+            hp = tryEval hp';
+            version = getVersion hp.value.ghc;
             majorMinor = versions.majorMinor version;
             ghcName = "ghc${replaceStrings ["."] [""] majorMinor}";
           in
-          if hp ? ghc && ! acc ? ${ghcName} && versionAtLeast version "9.2" && versionOlder version "9.12"
-          then acc // { ${ghcName} = hp; }
+          if hp.value ? ghc && ! acc ? ${ghcName} && versionAtLeast version "9.4" && versionOlder version "9.13"
+          then acc // { ${ghcName} = hp.value; }
           else acc
         )
         { }
         pkgs.haskell.packages;
       hpsFor = pkgs: { default = pkgs.haskellPackages; } // ghcsFor pkgs;
-      overlay = lib.composeManyExtensions [
-        inputs.text-rope-zipper.overlays.default
-        (final: prev: {
-          haskell = prev.haskell // {
-            packageOverrides = lib.composeManyExtensions [
-              prev.haskell.packageOverrides
-              (hfinal: hprev: with prev.haskell.lib.compose; {
-                terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
-                ${pname} = hfinal.callCabal2nix pname (sourceFilter ./.) { };
-              })
-            ];
-          };
+      haskell-overlay = lib.composeManyExtensions [
+        inputs.text-rope-zipper.overlays.haskell
+        (hfinal: hprev: {
+          terminal = hfinal.callCabal2nix "terminal" inputs.haskell-terminal { };
+          ${pname} = hfinal.callCabal2nix pname (sourceFilter ./.) { };
         })
       ];
+      overlay = final: prev: {
+        haskell = prev.haskell // {
+          packageOverrides = lib.composeManyExtensions [
+            prev.haskell.packageOverrides
+            haskell-overlay
+          ];
+        };
+      };
     in
+    {
+      overlays = {
+        default = overlay;
+        haskell = haskell-overlay;
+      };
+    }
+    //
     foreach inputs.nixpkgs.legacyPackages
       (system: pkgs':
         let
@@ -100,7 +109,5 @@
               };
             });
         }
-      ) // {
-      overlays.default = overlay;
-    };
+      );
 }
