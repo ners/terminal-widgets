@@ -39,7 +39,7 @@
             majorMinor = versions.majorMinor version;
             ghcName = "ghc${replaceStrings ["."] [""] majorMinor}";
           in
-          if hp.value ? ghc && ! acc ? ${ghcName} && versionAtLeast version "9.4" && versionOlder version "9.13"
+          if hp.value ? ghc && ! acc ? ${ghcName} && versionAtLeast version "9.6" && versionOlder version "9.13"
           then acc // { ${ghcName} = hp.value; }
           else acc
         )
@@ -89,7 +89,7 @@
           docsAndSdist = pkgs.linkFarm "${pname}-docsAndSdist" { inherit docs sdist; };
         in
         {
-          formatter.${system} = pkgs.nixpkgs-fmt;
+          formatter.${system} = pkgs.treefmt;
           legacyPackages.${system} = pkgs;
           packages.${system}.default = pkgs.symlinkJoin {
             name = "${pname}-all";
@@ -100,11 +100,13 @@
             foreach hps (ghcName: hp: {
               ${ghcName} = hp.shellFor {
                 packages = ps: [ hp.${pname} ];
-                nativeBuildInputs = [
-                  pkgs'.haskellPackages.cabal-install
+                nativeBuildInputs = with pkgs'; [
+                  haskellPackages.cabal-gild
+                  haskellPackages.cabal-install
                   hp.fourmolu
-                ] ++ lib.optionals (lib.versionAtLeast hp.ghc.version "9.4") [
                   hp.haskell-language-server
+                  nixpkgs-fmt
+                  treefmt
                 ];
               };
             });

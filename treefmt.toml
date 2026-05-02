@@ -1,0 +1,14 @@
+[formatter.cabal-gild]
+command = "cabal-gild"
+includes = ["*.cabal"]
+options = ["--io"]
+no-positional-arg-support = true
+
+[formatter.fourmolu]
+command = "fourmolu"
+options = ["--mode", "inplace"]
+includes = ["*.hs", "*.lhs"]
+
+[formatter.nixpkgs-fmt]
+command = "nixpkgs-fmt"
+includes = ["*.nix"]

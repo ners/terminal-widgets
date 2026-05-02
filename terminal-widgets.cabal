@@ -1,111 +1,118 @@
-cabal-version:       3.0
-name:                terminal-widgets
-version:             0.1.0.0
-synopsis:            Widgets in the terminal
-homepage:            https://github.com/ners/terminal-widgets/blob/master/README.md
-license:             Apache-2.0
-license-file:        LICENCE.md
-author:              ners
-maintainer:          ners@gmx.ch
-bug-reports:         https://github.com/ners/terminal-widgets/issues
-category:            Terminal
-build-type:          Simple
-extra-source-files:  CHANGELOG.md, README.md
-tested-with:         GHC == { 9.4, 9.6, 9.8 }
+cabal-version: 3.0
+name: terminal-widgets
+version: 0.1.0.0
+synopsis: Widgets in the terminal
+homepage: https://github.com/ners/terminal-widgets/blob/master/README.md
+license: Apache-2.0
+license-file: LICENCE.md
+author: ners
+maintainer: ners@gmx.ch
+bug-reports: https://github.com/ners/terminal-widgets/issues
+category: Terminal
+build-type: Simple
+extra-source-files:
+  CHANGELOG.md
+  README.md
 
 source-repository head
-  type:     git
+  type: git
   location: https://github.com/ners/terminal-widgets
 
 common common
-    default-language: GHC2021
-    ghc-options:
-        -Weverything
-        -Wno-unsafe
-        -Wno-all-missed-specialisations
-        -Wno-missing-export-lists
-        -Wno-missing-import-lists
-        -Wno-missing-kind-signatures
-        -Wno-missing-role-annotations
-        -Wno-missing-safe-haskell-mode
-    default-extensions:
-        ApplicativeDo
-        BlockArguments
-        DataKinds
-        DefaultSignatures
-        DeriveAnyClass
-        DeriveGeneric
-        DerivingStrategies
-        DerivingVia
-        ExplicitNamespaces
-        LambdaCase
-        NoFieldSelectors
-        NoImplicitPrelude
-        OverloadedLabels
-        OverloadedRecordDot
-        OverloadedStrings
-        PackageImports
-        RecordWildCards
-        RecursiveDo
-        StrictData
-        TypeFamilies
-        ViewPatterns
-    build-depends:
-        base >= 4.16 && < 5,
-        text,
+  default-language: GHC2021
+  ghc-options:
+    -Weverything
+    -Wno-unsafe
+    -Wno-all-missed-specialisations
+    -Wno-missing-export-lists
+    -Wno-missing-import-lists
+    -Wno-missing-kind-signatures
+    -Wno-missing-role-annotations
+    -Wno-missing-safe-haskell-mode
+
+  default-extensions:
+    ApplicativeDo
+    BlockArguments
+    DataKinds
+    DefaultSignatures
+    DeriveAnyClass
+    DeriveGeneric
+    DerivingStrategies
+    DerivingVia
+    ExplicitNamespaces
+    LambdaCase
+    NoFieldSelectors
+    NoImplicitPrelude
+    OverloadedLabels
+    OverloadedRecordDot
+    OverloadedStrings
+    PackageImports
+    RecordWildCards
+    RecursiveDo
+    StrictData
+    TypeFamilies
+    ViewPatterns
+
+  build-depends:
+    base >=4.16 && <5,
+    text,
 
 library
-    import:           common
-    hs-source-dirs:   src
-    exposed-modules:
-        System.Terminal.Render,
-        System.Terminal.Widgets.Buttons,
-        System.Terminal.Widgets.Common,
-        System.Terminal.Widgets.SearchSelect,
-        System.Terminal.Widgets.Select,
-        System.Terminal.Widgets.TextInput,
-    other-modules:
-        Prelude,
-        Prettyprinter.Extra,
-    build-depends:
-        exceptions,
-        extra,
-        fuzzy,
-        generic-lens,
-        mtl,
-        prettyprinter,
-        terminal,
-        text-rope-zipper,
-        transformers,
+  import: common
+  hs-source-dirs: src
+  exposed-modules:
+    System.Terminal.Render
+    System.Terminal.Widgets.Buttons
+    System.Terminal.Widgets.Class
+    System.Terminal.Widgets.SearchSelect
+    System.Terminal.Widgets.Select
+    System.Terminal.Widgets.TextInput
+
+  other-modules:
+    Prelude
+    Prettyprinter.Extra
+
+  build-depends:
+    exceptions,
+    extra,
+    fuzzy,
+    generic-lens,
+    mtl,
+    prettyprinter,
+    terminal,
+    text-rope-zipper,
+    transformers,
 
 test-suite spec
-    import:           common
-    ghc-options:      -threaded
-    type:             exitcode-stdio-1.0
-    hs-source-dirs:   test
-    main-is:          Spec.hs
-    build-depends:
-        HUnit,
-        QuickCheck,
-        generic-lens,
-        hspec,
-        terminal,
-        terminal-widgets,
-        text-rope-zipper,
-        transformers,
-        unliftio,
-    other-modules:
-        Prelude,
-        System.Terminal.Widgets.ButtonsSpec,
-        System.Terminal.Widgets.SearchSelectSpec,
-        System.Terminal.Widgets.SelectSpec,
-        System.Terminal.Widgets.TextInputSpec,
+  import: common
+  ghc-options: -threaded
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  build-depends:
+    HUnit,
+    QuickCheck,
+    generic-lens,
+    hspec,
+    terminal,
+    terminal-widgets,
+    text-rope-zipper,
+    transformers,
+    unliftio,
+
+  other-modules:
+    Prelude
+    System.Terminal.Widgets.ButtonsSpec
+    System.Terminal.Widgets.SearchSelectSpec
+    System.Terminal.Widgets.SelectSpec
+    System.Terminal.Widgets.TextInputSpec
 
 executable kitchen-sink
-    import:         common
-    main-is:        Main.hs
-    hs-source-dirs: app
-    build-depends:
-        terminal-widgets,
-    other-modules:
-        Prelude,
+  import: common
+  main-is: Main.hs
+  hs-source-dirs: app
+  build-depends:
+    terminal-widgets
+
+  other-modules:
+    Prelude
