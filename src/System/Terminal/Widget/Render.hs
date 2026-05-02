@@ -5,7 +5,6 @@ module System.Terminal.Widget.Render where
 
 import Control.Monad.State.Strict qualified as State
 import Prettyprinter (Doc, SimpleDocStream (..))
-import Prettyprinter qualified
 import Prettyprinter.Extra
 import Prelude hiding (putDoc, putLn, putSimpleDocStream)
 import Prelude qualified
@@ -19,9 +18,6 @@ type MonadCursor t m m' =
     , MonadState Position m
     )
 
-layoutPretty :: Doc ann -> SimpleDocStream ann
-layoutPretty = Prettyprinter.layoutPretty Prettyprinter.defaultLayoutOptions
-
 type AttributeStack m = [Attribute m]
 
 attributeStackToDocStream
@@ -33,12 +29,12 @@ attributeStackToDocStream = foldr (\ann acc -> SAnnPush ann . acc) id
 render
     :: forall m
      . (MonadTerminal m)
-    => Maybe (Position, Doc (Attribute m))
-    -> (Position, Doc (Attribute m))
+    => Maybe (Position, SimpleDocStream (Attribute m))
+    -> (Position, SimpleDocStream (Attribute m))
     -> m ()
-render (fromMaybe (Position{row = 0, col = 0}, "") -> (oldPos, oldDoc)) (newPos, newDoc) =
+render (fromMaybe (Position{row = 0, col = 0}, SEmpty) -> (oldPos, oldDoc)) (newPos, newDoc) =
     flip evalStateT oldPos do
-        goLine 0 0 (layoutPretty oldDoc, mempty) (layoutPretty newDoc, mempty)
+        goLine 0 0 (oldDoc, mempty) (newDoc, mempty)
         moveToPosition newPos
   where
     goLine
@@ -141,7 +137,7 @@ putDoc
      . (MonadCursor t m m')
     => Doc (Attribute m')
     -> m ()
-putDoc = putSimpleDocStream . layoutPretty
+putDoc = putSimpleDocStream . layoutPretty defaultLayoutOptions
 
 putLn :: forall t m m'. (MonadCursor t m m') => m ()
 putLn = do

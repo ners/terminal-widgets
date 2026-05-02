@@ -21,14 +21,11 @@ class Widget w where
         | otherwise = Nothing
     valid :: w -> Bool
     valid = const True
-    toDoc :: (MonadTerminal m) => w -> Doc (Attribute m)
-    default toDoc :: (Show w) => w -> Doc (Attribute m)
-    toDoc = ishow
+    toDocStream :: (MonadTerminal m) => w -> SimpleDocStream (Attribute m)
+    default toDocStream :: (Show w) => w -> SimpleDocStream (Attribute m)
+    toDocStream = layoutPretty defaultLayoutOptions . ishow
     lineCount :: w -> Int
-    lineCount =
-        countLinesS
-            . layoutPretty defaultLayoutOptions
-            . toDoc @_ @(TerminalT LocalTerminal IO)
+    lineCount = countLinesS . toDocStream @_ @(TerminalT LocalTerminal IO)
     render
         :: forall m
          . (MonadTerminal m)
@@ -45,5 +42,5 @@ defaultRender
     -> m ()
 defaultRender maybeOld new = Render.render (r <$> maybeOld) (r new)
   where
-    r :: w -> (Position, Doc (Attribute m))
-    r w = (w ^. cursor, toDoc w)
+    r :: w -> (Position, SimpleDocStream (Attribute m))
+    r w = (w ^. cursor, toDocStream w)

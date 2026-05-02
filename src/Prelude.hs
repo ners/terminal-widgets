@@ -65,7 +65,12 @@ import Data.Text.Rope.Zipper qualified as RopeZipper
 import Debug.Trace
 import GHC.Exts (IsList (..), fromList)
 import GHC.Generics (Generic)
-import Prettyprinter (Pretty (pretty), annotate)
+import Prettyprinter
+    ( Pretty (pretty)
+    , annotate
+    , defaultLayoutOptions
+    , layoutPretty
+    )
 import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO (BufferMode (NoBuffering), IO, hSetBuffering, stdout)
 import System.Terminal

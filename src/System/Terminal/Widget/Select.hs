@@ -36,17 +36,19 @@ instance (Show a) => Widget (Select a) where
         | numChecked s < s.maxSelect || s ^. current . #checked = flipCurrent s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
-    toDoc s =
-        let mkOption SelectOption{..} =
-                mconcat
-                    [ " "
-                    , Text.intercalate
-                        (if checked then "*" else " ")
-                        (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
-                    , " "
-                    , s.optionText value
-                    ]
-         in pretty $ Text.unlines $ s.prompt : (mkOption <$> s.options)
+    toDocStream s =
+        layoutPretty defaultLayoutOptions . pretty . Text.unlines $
+            s.prompt : (mkOption <$> s.options)
+      where
+        mkOption SelectOption{..} =
+            mconcat
+                [ " "
+                , Text.intercalate
+                    (if checked then "*" else " ")
+                    (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
+                , " "
+                , s.optionText value
+                ]
     lineCount s = 1 + length s.options
 
 moveUp :: Select a -> Select a

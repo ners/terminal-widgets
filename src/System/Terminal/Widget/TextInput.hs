@@ -42,8 +42,9 @@ instance Widget TextInput where
         | valid t = Just $ KeyEvent EnterKey $ fromList [Alt | t.multiline]
         | otherwise = Nothing
     valid TextInput{..} = not $ required && RopeZipper.null value
-    toDoc TextInput{..} =
-        pretty
+    toDocStream TextInput{..} =
+        layoutPretty defaultLayoutOptions
+            . pretty
             . Text.intercalate "\n"
             . padLines
             . Text.split (== '\n')

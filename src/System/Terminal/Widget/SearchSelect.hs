@@ -69,22 +69,22 @@ instance (Eq a, Show a) => Widget (SearchSelect a) where
         | numChecked s < s.maxSelect = flipCurrent >>> clearSearchValue $ s
     handleEvent _ s = s
     valid s = inRange (s.minSelect, s.maxSelect) $ numChecked s
-    toDoc s =
-        let prompt = fullPrompt s pretty (annotate inverted . pretty)
-            mkOption a =
-                Text.intercalate
-                    " "
-                    [ ""
-                    , Text.intercalate
-                        (if a `elem` s.selections then "*" else " ")
-                        (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
-                    , s.optionText a
-                    ]
-            options =
-                pretty . Text.intercalate "\n" $
-                    RopeZipper.toText s.searchValue
-                        : (mkOption <$> take s.maxVisible s.visibleOptions)
-         in prompt <> options
+    toDocStream s = layoutPretty defaultLayoutOptions $ prompt <> options
+      where
+        prompt = fullPrompt s pretty (annotate inverted . pretty)
+        mkOption a =
+            Text.intercalate
+                " "
+                [ ""
+                , Text.intercalate
+                    (if a `elem` s.selections then "*" else " ")
+                    (if s.maxSelect > 1 then ["[", "]"] else ["(", ")"])
+                , s.optionText a
+                ]
+        options =
+            pretty . Text.intercalate "\n" $
+                RopeZipper.toText s.searchValue
+                    : (mkOption <$> take s.maxVisible s.visibleOptions)
     lineCount s = 1 + min s.maxVisible (length s.visibleOptions)
 
 clearSearchValue :: SearchSelect a -> SearchSelect a

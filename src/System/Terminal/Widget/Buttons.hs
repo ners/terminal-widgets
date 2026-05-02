@@ -27,7 +27,9 @@ instance Widget Buttons where
     handleEvent _ = id
     valid = const True
     submitEvent _ = Just $ KeyEvent EnterKey []
-    toDoc Buttons{..} = pretty prompt <> foldMap b (zip [0 ..] buttons)
+    toDocStream Buttons{..} =
+        layoutPretty defaultLayoutOptions $
+            pretty prompt <> foldMap b (zip [0 ..] buttons)
       where
         b (i, (label, accessKey)) = do
             let (prefix, maybeSuffix) = second Text.uncons $ Text.break (accessKey `matches`) label
