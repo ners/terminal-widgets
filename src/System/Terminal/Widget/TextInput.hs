@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module System.Terminal.Widgets.TextInput where
+module System.Terminal.Widget.TextInput where
 
 import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
-import System.Terminal.Widgets.Common
+import System.Terminal.Modifier
+import System.Terminal.Widget.Class
 import Prelude
 
 data TextInput = TextInput

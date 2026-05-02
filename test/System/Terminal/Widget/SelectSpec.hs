@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module System.Terminal.Widgets.SelectSpec where
+module System.Terminal.Widget.SelectSpec where
 
 import System.Terminal
-import System.Terminal.Widgets.Select
+import System.Terminal.Widget.Select
 import Prelude
 
 deriving stock instance Show (SelectOption Int)

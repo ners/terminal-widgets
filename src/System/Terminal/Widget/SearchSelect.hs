@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module System.Terminal.Widgets.SearchSelect where
+module System.Terminal.Widget.SearchSelect where
 
 import Data.Ord (Down (Down))
 import Data.Text qualified as Text
 import Data.Text.Rope.Zipper (RopeZipper)
 import Data.Text.Rope.Zipper qualified as RopeZipper
-import System.Terminal.Widgets.Common
-import System.Terminal.Widgets.TextInput
+import System.Terminal.Widget.Class
+import System.Terminal.Widget.TextInput
 import Text.Fuzzy qualified as Fuzzy
 import Prelude
 

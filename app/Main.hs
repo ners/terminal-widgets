@@ -3,11 +3,7 @@
 module Main where
 
 import Data.Text qualified as Text
-import System.Terminal.Widgets.Buttons
-import System.Terminal.Widgets.Common (runWidgetIO)
-import System.Terminal.Widgets.SearchSelect
-import System.Terminal.Widgets.Select
-import System.Terminal.Widgets.TextInput
+import System.Terminal.Widget
 import Prelude
 
 deriving stock instance Show TextInput

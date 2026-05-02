@@ -61,12 +61,14 @@ library
   import: common
   hs-source-dirs: src
   exposed-modules:
-    System.Terminal.Render
-    System.Terminal.Widgets.Buttons
-    System.Terminal.Widgets.Class
-    System.Terminal.Widgets.SearchSelect
-    System.Terminal.Widgets.Select
-    System.Terminal.Widgets.TextInput
+    System.Terminal.Modifier
+    System.Terminal.Widget
+    System.Terminal.Widget.Buttons
+    System.Terminal.Widget.Class
+    System.Terminal.Widget.Render
+    System.Terminal.Widget.SearchSelect
+    System.Terminal.Widget.Select
+    System.Terminal.Widget.TextInput
 
   other-modules:
     Prelude
@@ -102,10 +104,10 @@ test-suite spec
 
   other-modules:
     Prelude
-    System.Terminal.Widgets.ButtonsSpec
-    System.Terminal.Widgets.SearchSelectSpec
-    System.Terminal.Widgets.SelectSpec
-    System.Terminal.Widgets.TextInputSpec
+    System.Terminal.Widget.ButtonsSpec
+    System.Terminal.Widget.SearchSelectSpec
+    System.Terminal.Widget.SelectSpec
+    System.Terminal.Widget.TextInputSpec
 
 executable kitchen-sink
   import: common

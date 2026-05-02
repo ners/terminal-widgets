@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module System.Terminal.Render where
+module System.Terminal.Widget.Render where
 
 import Control.Monad.State.Strict qualified as State
 import Prettyprinter (Doc, SimpleDocStream (..))

@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module System.Terminal.Widgets.Buttons where
+module System.Terminal.Widget.Buttons where
 
 import Data.Char (toLower)
 import Data.Text qualified as Text
-import System.Terminal.Widgets.Common
+import System.Terminal.Widget.Class
 import Prelude
 
 data Buttons = Buttons

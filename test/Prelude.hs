@@ -49,7 +49,7 @@ import Data.Traversable (for)
 import Debug.Trace
 import System.Terminal
 import System.Terminal.Internal
-import System.Terminal.Widgets.Common
+import System.Terminal.Widget
 import Test.HUnit.Base
 import Test.Hspec
 import Test.Hspec.QuickCheck

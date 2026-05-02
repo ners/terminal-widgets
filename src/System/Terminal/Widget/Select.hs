@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedLists #-}
 
-module System.Terminal.Widgets.Select where
+module System.Terminal.Widget.Select where
 
 import Data.Text qualified as Text
-import System.Terminal.Widgets.Common
+import System.Terminal.Widget.Class
 import Prelude
 
 data SelectOption a = SelectOption

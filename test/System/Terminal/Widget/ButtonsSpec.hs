@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module System.Terminal.Widgets.ButtonsSpec where
+module System.Terminal.Widget.ButtonsSpec where
 
-import System.Terminal.Widgets.Buttons
+import System.Terminal.Widget.Buttons
 import Prelude
 
 deriving stock instance Show Buttons

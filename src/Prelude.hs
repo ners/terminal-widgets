@@ -5,6 +5,7 @@ module Prelude
     , module Control.Arrow
     , module Control.Monad
     , module Control.Monad.Catch
+    , module Control.Monad.IO.Class
     , module Control.Monad.Reader
     , module Control.Monad.State
     , module Control.Monad.Trans
@@ -21,9 +22,9 @@ module Prelude
     , module Data.Monoid
     , module Data.String
     , module Data.Text
-    , module Prettyprinter
     , module Debug.Trace
     , module GHC.Exts
+    , module Prettyprinter
     , module GHC.Generics
     , module Prelude
     , module System.Exit
@@ -37,6 +38,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Catch (MonadMask, MonadThrow)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader)
 import Control.Monad.State (MonadState, evalStateT)
 import Control.Monad.Trans (MonadTrans)

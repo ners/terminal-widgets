@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module System.Terminal.Widgets.TextInputSpec where
+module System.Terminal.Widget.TextInputSpec where
 
 import Data.Text qualified as Text
 import System.Terminal
-import System.Terminal.Widgets.Common qualified as Widget
-import System.Terminal.Widgets.TextInput
+import System.Terminal.Widget.Class qualified as Widget
+import System.Terminal.Widget.TextInput
 import Prelude
 
 deriving stock instance Eq TextInput
